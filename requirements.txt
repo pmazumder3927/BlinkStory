@@ -1,0 +1,8 @@
+py-cord
+openai
+python-dotenv
+pynacl
+deepgram-sdk
+requests
+aiohttp
+moviepy
