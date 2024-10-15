@@ -171,7 +171,17 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
     prompt = r"""You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and up to six scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
     1. Tags for the song genre and style
     2. The lyrics, which should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. 
-    3. The scene prompts, which should focus on describing visual elements only. Remember that each scene prompt should be written as a standalone scene, and should be able to be read independently. Example: A dimly lit, futuristic battlefield with a neon-lit door marked with "Lotus" symbol. The protagonist (the player) confidently approaches and unlocks the door. Quick flashes show the enemy team behind barriers, Cyberpunk, night, neon. Also make sure that the scenes fit when playing over the lyrics. Try to keep consistent style between scenes
+    3. The scene prompts, which should focus on describing visual elements only. Remember that each scene prompt should be written as a standalone scene, and should be able to be read independently. Also make sure that the scenes fit when playing over the lyrics. Try to keep consistent style between scenes. If a person is mentioned, include a description of their appearance. Be specific about subject movement, describe camera movement in detail, and include environment details. Be creative and don't be afraid to be extra. Use chinese to fit an excess amount of detail in.
+
+    Good example scene prompt:
+    场景从一个广角镜头开始，一群中国朋友站在涩谷Sky的观景台边缘，凝视着下方广阔的城市景观。镜头以空中推轨开场，缓慢滑过他们的头顶，捕捉远处闪烁的东京灯火。随后缓缓下降，进入朋友们的中景特写，他们的面庞被城市灯光柔和照亮，眼中充满着惊叹和敬畏。镜头的运动极其平滑连贯，营造出宁静而充满情感的氛围。朋友们相互微笑，轻轻交流，尽管城市如此广阔，这一刻却显得异常亲密。镜头随后切换到主观视角，与他们的视线对齐，缓慢向前移动，展现出东京天际线的宽广景象，细节清晰，超高清的灯光延伸无尽。微风轻轻拂动着他们的衣物，给这一刻增添了一丝梦幻般的宁静。整个画面堪称电影杰作，结合了获奖的摄影技术与超现实的逼真感，让角色与城市的情感联系清晰可感。
+
+    Appearances:
+    Kwon: skinny korean male, short black hair
+    Jon: chinese male, big smile, small eyes
+    Lucy: chinese girl, black hair with highlights
+    Lily: chinese girl, black hair
+    Pramit: brown male, glasses, short black hair
 
     Reply in the format of:
     Tags: [tags]
