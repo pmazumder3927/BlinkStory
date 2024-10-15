@@ -1,3 +1,5 @@
+import random
+import time
 from aiohttp import ClientSession
 import discord
 import openai
@@ -9,6 +11,8 @@ import requests
 import json
 from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.fx.loop import loop
+
+MAX_SCENES = 5
 
 bot = discord.Bot()
 connections = {}
@@ -60,17 +64,20 @@ def create_video_request(scene_prompt, scene_number):
     response = create_request(VIDEO_API_URL, headers, body=body)
     return response.get("videoId") if response else None
 
-def create_song_request(lyrics):
+def create_song_request(lyrics, tags):
     headers = {
         "X-API-Key": SONG_API_TOKEN,
         "Content-Type": "application/json"
     }
+    print("lyrics")
+    print(lyrics)
     body = {
         "custom_mode": True,
         "mv": "chirp-v3-5",
         "input": {
             "prompt": lyrics,
-            "title": "Electric Dreams",
+            "title": "discord slander",
+            "tags": tags,
             "continue_at": 0,
             "continue_clip_id": ""
         }
@@ -85,7 +92,7 @@ async def record(ctx):
     voice = ctx.author.voice
 
     if not voice:
-        await ctx.respond("⚠️ You aren't in a voice channel!")
+        await ctx.respond("hop in vc")
         return
 
     vc = await voice.channel.connect()
@@ -96,10 +103,11 @@ async def record(ctx):
         once_done,
         ctx.channel,
     )
-    await ctx.respond("🔴 Listening to this conversation.")
+    await ctx.respond("whats good")
 
 async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
     recorded_users = {user_id: await channel.guild.fetch_member(user_id) for user_id in sink.audio_data.keys()}
+    print(recorded_users)
     await sink.vc.disconnect()
 
     words_list = []
@@ -115,9 +123,8 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
         words = [word.to_dict() for word in words]
 
         for word in words:
-            if word["speaker"] != 0:
-                user_id = word["speaker"]
-
+            # if word["speaker"] != 0:
+            #     user_id = word["speaker"]
             new_word = {
                 "word": word["word"],
                 "start": word["start"],
@@ -135,12 +142,25 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
 
     for word in words_list:
         if "speaker" in word and word["speaker"] != current_speaker:
-            speaker_name = recorded_users[word["speaker"]].display_name
+            speaker_name = recorded_users[word["speaker"]].display_name if word["speaker"] in recorded_users else word["speaker"]
             transcript += f"\n\nSpeaker {speaker_name}: "
             current_speaker = word["speaker"]
         transcript += f"{word['punctuated_word']} "
 
     transcript = transcript.strip()
+
+    # replace transcript names with the names of the people in the call
+    username_mapping = {
+        "Pramit Pegger": "Kwon",
+        "jujubeans": "Jon",
+        "01june": "Lucy",
+        "\\": "Pramit",
+        "koko": "Lily",
+    }
+    for name in username_mapping:
+        transcript = transcript.replace(name, username_mapping[name])
+
+    print(transcript)
 
     # if transcript is too short, don't generate a music video
     if len(transcript) < 100:
@@ -148,12 +168,22 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
         return
 
     # Generate lyrics and scene prompts for the music video
+    prompt = r"""You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and up to six scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
+    1. Tags for the song genre and style
+    2. The lyrics, which should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. 
+    3. The scene prompts, which should focus on describing visual elements only. Remember that each scene prompt should be written as a standalone scene, and should be able to be read independently. Example: A dimly lit, futuristic battlefield with a neon-lit door marked with "Lotus" symbol. The protagonist (the player) confidently approaches and unlocks the door. Quick flashes show the enemy team behind barriers, Cyberpunk, night, neon. Also make sure that the scenes fit when playing over the lyrics. Try to keep consistent style between scenes
+
+    Reply in the format of:
+    Tags: [tags]
+    Lyrics: [lyrics]
+    Scene Prompt 1: [scene prompt], etc\"
+    """
     video_completion = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="gpt-4o",
         messages=[
             {
                 "role": "system",
-                "content": "You are a creative writer tasked with turning a Valorant match transcript into a narrative for a short music video. Create a set of lyrics and up to six scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. The lyrics should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. The scene prompts should focus on the visual elements only. Remember that each scene prompt should be written as a standalone scene, and should be able to be read independently. Reply in the format of:\n Lyrics: [lyrics]\n Scene Prompt 1: [scene prompt], etc",
+                "content": prompt,
             },
             {"role": "user", "content": transcript},
         ],
@@ -162,18 +192,25 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
     lyrics_and_scenes = video_completion.choices[0].message.content
 
     # Parse lyrics and scenes
+    tags = lyrics_and_scenes.split("Tags:")[1].split("Lyrics:")[0].strip()
     lyrics = lyrics_and_scenes.split("Lyrics:")[1].split("Scene Prompt")[0].strip()
     scenes = [scene.strip() for scene in lyrics_and_scenes.split("Scene Prompt") if scene.strip() != ""][1:]
 
+    for i, scene in enumerate(scenes):
+        print(f"Scene {i + 1}: {scene}")
+
     # Send initial message with lyrics and scene prompts
-    initial_message = await channel.send(f"Here are the lyrics for the music video:\n\n{lyrics[:1500]}\n\nScene prompts: {scenes}")
+    initial_message = await channel.send(f"im thinking so hard rn")
 
     # Create song using Suno API
-    song_task_id = create_song_request(lyrics)
+    # Create videos for each scene
+    video_ids = [create_video_request(scene, i + 1) for i, scene in enumerate(scenes[:MAX_SCENES])]
+    song_task_id = create_song_request(lyrics, tags)
 
-    # Wait for song to be generated
+    # Wait for all videos to be generated
     song_url = None
-    while True:
+    video_urls = [None] * len(video_ids)
+    while None in video_urls or song_url is None:
         if song_task_id:
             song_info = create_request(f"https://api.goapi.ai/api/suno/v1/music/{song_task_id}", {
                 "X-API-Key": SONG_API_TOKEN,
@@ -181,18 +218,6 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
             }, method="get")
             if song_info and song_info["data"]["status"] == "completed":
                 song_url = song_info["data"]["clips"][list(song_info["data"]["clips"].keys())[0]]["audio_url"]
-                break
-        await asyncio.sleep(10)
-
-    # Update message with generated song URL
-    await initial_message.edit(content=f"Here are the lyrics for the music video:\n\n{lyrics[:1500]}\n\nScene prompts: {scenes}\n\n✅ Song generated: [Song Link]({song_url})")
-
-    # Create videos for each scene
-    video_ids = [create_video_request(scene, i + 1) for i, scene in enumerate(scenes[:6])]
-
-    # Wait for all videos to be generated
-    video_urls = [None] * len(video_ids)
-    while None in video_urls:
         for i, video_id in enumerate(video_ids):
             if video_id and not video_urls[i]:
                 video_info = create_request(f"https://api.useapi.net/v1/minimax/videos/{video_id}", {
@@ -200,12 +225,23 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
                     "Content-Type": "application/json"
                 }, method="get")
                 if video_info and video_info["status"] == 2:  # Completed
-                    video_urls[i] = video_info["videoURL"]
-                    # Update the message with each video as it's completed
-                    await initial_message.edit(content=f"Here are the lyrics for the music video:\n\n{lyrics[:1500]}\n\nScene prompts: {scenes}\n\n✅ Song generated: [Song Link]({song_url})\n\n" + "\n".join([f"✅ Scene {i + 1} generated: [Video Link]({video_url})" for i, video_url in enumerate(video_urls) if video_url]))
-        await asyncio.sleep(10)
+                    video_urls[i] = video_info["downloadURL"]
+                    # Update the message with each video as it's complete
+                if video_info["status"] == 5:
+                    # means it's been moderated, just move on
+                    video_urls[i] = ""
+        thinking_text = random.choice(["thinking", "thinking hard", "thinking so hard rn", "this is taking a while", "doin stuff", "lol", "bruh"])
+        # song_generated_text = f"✅ Song generated: [Song Link]({song_url})\n\n" if song_url else ""
+        song_generated_text = "zoom toons"
+        video_generated_text = ([f"✅ Scene {i + 1} generated: [Video Link]({video_url})" for i, video_url in enumerate(video_urls) if video_url])
+        print(video_generated_text)
+        await initial_message.edit(content=f"{thinking_text}\n\n{song_generated_text}")
+        await asyncio.sleep(30)
     # Merge videos and song
-    await merge_videos_and_song(song_url, video_urls)
+    # purge empty video urls
+    video_urls = [url for url in video_urls if url]
+    output_path = await merge_videos_and_song(song_url, video_urls)
+    await initial_message.channel.send(file=discord.File(output_path))
 
 async def merge_videos_and_song(song_url, video_urls):
     # Step 1: Download song and videos
@@ -228,8 +264,10 @@ async def merge_videos_and_song(song_url, video_urls):
     final_video_clip = final_video_clip.set_audio(song_audio)
 
     # Step 4: Write the output to a file
-    output_path = 'final_output.mp4'
+    output_path = f"final_output_{time.time()}.mp4"
     final_video_clip.write_videofile(output_path, codec='libx264', audio_codec='aac')
+
+    # upload to 
 
     # Step 5: Clean up temporary files
     song_audio.close()
@@ -237,6 +275,7 @@ async def merge_videos_and_song(song_url, video_urls):
     concatenated_clip.close()
     for video in video_clips:
         video.close()
+    return output_path
 
 async def download_file(session, url, filename):
     async with session.get(url) as response:
