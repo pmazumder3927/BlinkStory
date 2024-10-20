@@ -19,6 +19,8 @@ async def download_file(session, url, filename):
 async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_properties):
     model = stable_whisper.load_model("base")
     lyrics = re.sub(r'\[.*?\]|\(.*?\)', '', song_lyrics)
+    # remove all symbols and punctuation other than periods, commas, and question marks
+    lyrics = re.sub(r'[^\w\s.,?!]', '', lyrics).strip()
     # delete existing ass file
     ass_path = './output.ass'
     if os.path.exists(ass_path):
