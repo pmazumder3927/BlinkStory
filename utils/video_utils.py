@@ -24,6 +24,8 @@ async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_prop
     # delete existing ass file
     if os.path.exists(ass_path):
         os.remove(ass_path)
+    print("subtitle_properties")
+    print(subtitle_properties)
     ass_out = result.to_ass(ass_path, karaoke=True, font=subtitle_properties["font"], font_color=subtitle_properties["font_color"])
 
     async with ClientSession() as session:
