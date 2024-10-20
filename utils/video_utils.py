@@ -20,6 +20,7 @@ async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_prop
     model = stable_whisper.load_model("base")
     lyrics = re.sub(r'\[.*?\]|\(.*?\)', '', song_lyrics)
     # delete existing ass file
+    ass_path = './output.ass'
     if os.path.exists(ass_path):
         os.remove(ass_path)
     print("subtitle_properties")
@@ -30,7 +31,6 @@ async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_prop
         video_paths = [await download_file(session, video_url, f'video_{i+1}.mp4') for i, video_url in enumerate(video_urls)]
 
     result = model.align('./song.mp3', lyrics, language='en', fast_mode=True)
-    ass_path = './output.ass'
     ass_out = result.to_ass(ass_path, karaoke=True, font=subtitle_properties["font"], font_color=subtitle_properties["font_color"])
 
     video_clips = [VideoFileClip(video) for video in video_paths]
