@@ -1,3 +1,4 @@
+import os
 import random
 import time
 from aiohttp import ClientSession
@@ -13,6 +14,7 @@ from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.fx.loop import loop
 
 MAX_SCENES = 5
+MAX_CONCURRENT_VIDEOS = 2
 
 bot = discord.Bot()
 connections = {}
@@ -27,6 +29,7 @@ options = PrerecordedOptions(
     punctuate=True,
     diarize=True,
     detect_language=True,
+    keywords=["Reyna", "Nayo", "Sage", "Killjoy", "Jett", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Sage", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Lily", "Kwon"]
 )
 
 client = openai.OpenAI(
@@ -113,10 +116,14 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
     words_list = []
 
     for user_id, audio in sink.audio_data.items():
+        audio_data = audio.file.read()
         payload: FileSource = {
-            "buffer": audio.file.read(),
+            "buffer": audio_data,
         }
-
+        # save all the audio to files under a folder for the user
+        os.makedirs(f"audio/{user_id}", exist_ok=True)
+        with open(f"audio/{user_id}/{user_id}_{time.time()}.wav", "wb") as f:
+            f.write(audio_data)
         response = deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
 
         words = response["results"]["channels"][0]["alternatives"][0]["words"]
@@ -152,9 +159,10 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
     # replace transcript names with the names of the people in the call
     username_mapping = {
         "Pramit Pegger": "Kwon",
-        "jujubeans": "Jon",
+        "juju": "Jon",
+        "0ptimize": "Jimmy",
         "01june": "Lucy",
-        "\\": "Pramit",
+        "/": "Pramit",
         "koko": "Lily",
     }
     for name in username_mapping:
@@ -168,28 +176,19 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
         return
 
     # Generate lyrics and scene prompts for the music video
-    prompt = r"""You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and up to six scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
+    prompt = r"""You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and 6 scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
     1. Tags for the song genre and style
     2. The lyrics, which should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. 
-    3. The scene prompts, which should focus on describing visual elements only. Remember that each scene prompt should be written as a standalone scene, and should be able to be read independently. Also make sure that the scenes fit when playing over the lyrics. Try to keep consistent style between scenes. If a person is mentioned, include a description of their appearance. Be specific about subject movement, describe camera movement in detail, and include environment details. Be creative and don't be afraid to be extra. Use chinese to fit an excess amount of detail in.
+    3. A visual theme paragraph, which should be a semi-long description of the visual theme of the music video. Example: "realistic cinematic cyberpunk style in an fps game, explosions in the background, photorealistic music video", or maybe "asurrealist, animated, dreamlike illustrations in a painted world" along with a synopsis of the theme of the song.
 
-    Good example scene prompt:
-    场景从一个广角镜头开始，一群中国朋友站在涩谷Sky的观景台边缘，凝视着下方广阔的城市景观。镜头以空中推轨开场，缓慢滑过他们的头顶，捕捉远处闪烁的东京灯火。随后缓缓下降，进入朋友们的中景特写，他们的面庞被城市灯光柔和照亮，眼中充满着惊叹和敬畏。镜头的运动极其平滑连贯，营造出宁静而充满情感的氛围。朋友们相互微笑，轻轻交流，尽管城市如此广阔，这一刻却显得异常亲密。镜头随后切换到主观视角，与他们的视线对齐，缓慢向前移动，展现出东京天际线的宽广景象，细节清晰，超高清的灯光延伸无尽。微风轻轻拂动着他们的衣物，给这一刻增添了一丝梦幻般的宁静。整个画面堪称电影杰作，结合了获奖的摄影技术与超现实的逼真感，让角色与城市的情感联系清晰可感。
-
-    Appearances:
-    Kwon: skinny korean male, short black hair
-    Jon: chinese male, big smile, small eyes
-    Lucy: chinese girl, black hair with highlights
-    Lily: chinese girl, black hair
-    Pramit: brown male, glasses, short black hair
-
-    Reply in the format of:
-    Tags: [tags]
+    Reply in the format of (example output):
+    Tags: rock grunge pop
     Lyrics: [lyrics]
-    Scene Prompt 1: [scene prompt], etc\"
+    Visual Theme: [visual theme sentences]
     """
     video_completion = client.chat.completions.create(
         model="gpt-4o",
+        max_tokens=4095,
         messages=[
             {
                 "role": "system",
@@ -199,59 +198,106 @@ async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
         ],
     )
 
+    scenes_prompt = r"""
+    You are a creative scene writer who takes a transcript and lyrics and creates a series of 6 scene prompts to feed into a generative model to create a music video over the lyrics, which are generated from the story of the transcript. Try to discern the full context of the situation, then create each prompt as a standalone, detailed description of the scene. 
+    Be specific, and only describe the visual elements of the scene. Be creative with what each character looks like, and describe them specifically, and give them a name tag in every single scene description, so their name is visually visible. Make sure there is something to visually follow from scene-to-scene which references the lyrics, especially the chorus for impact. Be extremely extra and visually compelling, describing the scene ambiance, weather, explosions, etc.
+
+    Good example prompts
+
+    Scene 1:
+    [Setting: A large digital stage, displaying huge LED screens with patterns simulating an epic final showdown. The atmosphere is vibrant with pulsating light effects syncing with the beats.] - *Character Focus: PRAMIT and TEAM* are in the spotlight, posed victoriously with their in-game avatars displayed. The team's outfits are a fusion of sportswear and high-tech armor, glowing with the harmony of colors. - The scene embodies celebration, camaraderie, and triumph, aligning with "In this game, we’re never in doubt." - Visual Element: The camera pulls back to reveal the entire arena alight with moving visuals and fireworks of colors, creating a grand, conclusive panorama, as the outro plays with “Shower's clear, shine bright, no fear.”
+
+    Begin each scene with a complete description of everything on screen, with character descriptions, color, style, and tone
+    """
+
     lyrics_and_scenes = video_completion.choices[0].message.content
 
     # Parse lyrics and scenes
     tags = lyrics_and_scenes.split("Tags:")[1].split("Lyrics:")[0].strip()
     lyrics = lyrics_and_scenes.split("Lyrics:")[1].split("Scene Prompt")[0].strip()
-    scenes = [scene.strip() for scene in lyrics_and_scenes.split("Scene Prompt") if scene.strip() != ""][1:]
-
+    # scenes = [scene.strip() for scene in lyrics_and_scenes.split("Scene Prompt") if scene.strip() != ""][1:]
+    visual_theme = lyrics_and_scenes.split("Visual Theme:")[1].strip()
+    print("Song tags:")
+    print(tags)
+    print("Visual theme:")
+    print(visual_theme)
+    scenes_prompt_completion = client.chat.completions.create(
+        model="gpt-4o",
+        max_tokens=4095,
+        messages=[
+            {
+                "role": "system",
+                "content": scenes_prompt,
+            },
+            {"role": "user", "content": transcript + f"\n\nLyrics: {lyrics}"},
+        ],
+    )
+    scenes = scenes_prompt_completion.choices[0].message.content.split("Scene ")[1:]
+    # append visual theme to the end of each scene
+    scenes = [scene + f"\n\nVisual theme: {visual_theme}" for scene in scenes]
     for i, scene in enumerate(scenes):
         print(f"Scene {i + 1}: {scene}")
 
     # Send initial message with lyrics and scene prompts
     initial_message = await channel.send(f"im thinking so hard rn")
+    # Initialize variables
+    video_ids = [None] * MAX_SCENES
+    video_urls = [None] * MAX_SCENES
+    in_progress_videos = 0
+    next_video_index = 0
 
-    # Create song using Suno API
-    # Create videos for each scene
-    video_ids = [create_video_request(scene, i + 1) for i, scene in enumerate(scenes[:MAX_SCENES])]
+    # Start the song generation request
     song_task_id = create_song_request(lyrics, tags)
-
-    # Wait for all videos to be generated
     song_url = None
-    video_urls = [None] * len(video_ids)
+
+    # Main loop
     while None in video_urls or song_url is None:
-        if song_task_id:
+        # Start new video requests if under the concurrency limit
+        while in_progress_videos < MAX_CONCURRENT_VIDEOS and next_video_index < MAX_SCENES:
+            scene = scenes[next_video_index]
+            video_id = create_video_request(scene, next_video_index + 1)
+            video_ids[next_video_index] = video_id
+            in_progress_videos += 1
+            next_video_index += 1
+
+        # Check the status of the song
+        if song_task_id and song_url is None:
             song_info = create_request(f"https://api.goapi.ai/api/suno/v1/music/{song_task_id}", {
                 "X-API-Key": SONG_API_TOKEN,
                 "Content-Type": "application/json"
             }, method="get")
             if song_info and song_info["data"]["status"] == "completed":
                 song_url = song_info["data"]["clips"][list(song_info["data"]["clips"].keys())[0]]["audio_url"]
-        for i, video_id in enumerate(video_ids):
-            if video_id and not video_urls[i]:
-                video_info = create_request(f"https://api.useapi.net/v1/minimax/videos/{video_id}", {
+
+        # Check the status of video requests
+        for i in range(len(video_ids)):
+            if video_ids[i] and video_urls[i] is None:
+                video_info = create_request(f"https://api.useapi.net/v1/minimax/videos/{video_ids[i]}", {
                     "Authorization": f"Bearer {VIDEO_API_TOKEN}",
                     "Content-Type": "application/json"
                 }, method="get")
-                if video_info and video_info["status"] == 2:  # Completed
-                    video_urls[i] = video_info["downloadURL"]
-                    # Update the message with each video as it's complete
-                if video_info["status"] == 5:
-                    # means it's been moderated, just move on
-                    video_urls[i] = ""
+                if video_info:
+                    if video_info["status"] == 2:  # Completed
+                        video_urls[i] = video_info["downloadURL"]
+                        in_progress_videos -= 1
+                    elif video_info["status"] == 5:  # Moderated
+                        video_urls[i] = ""
+                        in_progress_videos -= 1
+
+        # Update the user with the progress
         thinking_text = random.choice(["thinking", "thinking hard", "thinking so hard rn", "this is taking a while", "doin stuff", "lol", "bruh"])
         # song_generated_text = f"✅ Song generated: [Song Link]({song_url})\n\n" if song_url else ""
-        song_generated_text = "zoom toons"
-        video_generated_text = ([f"✅ Scene {i + 1} generated: [Video Link]({video_url})" for i, video_url in enumerate(video_urls) if video_url])
-        print(video_generated_text)
-        await initial_message.edit(content=f"{thinking_text}\n\n{song_generated_text}")
+        song_generated_text = random.choice(['zoom toons', 'weeowoo', 'ooga'])
+        # video_generated_text = "\n".join([f"✅ Scene {i + 1} generated: [Video Link]({url})" for i, url in enumerate(video_urls) if url])
+        video_generated_text = random.choice(['hooga', 'weeowoo', 'zoom toons'])
+        await initial_message.edit(content=f"{thinking_text}\n\n{song_generated_text}{video_generated_text}")
         await asyncio.sleep(30)
     # Merge videos and song
     # purge empty video urls
     video_urls = [url for url in video_urls if url]
     output_path = await merge_videos_and_song(song_url, video_urls)
-    await initial_message.channel.send(file=discord.File(output_path))
+    # send the video, with a message @ everyone in the transcript
+    await initial_message.channel.send(file=discord.File(output_path), content="\n".join([f"<@{user_id}>" for user_id in recorded_users.keys()]))
 
 async def merge_videos_and_song(song_url, video_urls):
     # Step 1: Download song and videos

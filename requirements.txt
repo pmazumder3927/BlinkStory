@@ -6,3 +6,4 @@ deepgram-sdk
 requests
 aiohttp
 moviepy
+pyfoal

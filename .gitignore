@@ -5,3 +5,7 @@ __pycache__/
 /.venv
 *.mp4
 *.mp3
+*.wav
+client_secret.json
+token.json
+*.ass
