@@ -30,7 +30,7 @@ async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_prop
         song_path = await download_file(session, song_url, 'song.mp3')
         video_paths = [await download_file(session, video_url, f'video_{i+1}.mp4') for i, video_url in enumerate(video_urls)]
 
-    result = model.align('./song.mp3', lyrics, language='en', fast_mode=True)
+    result = model.align('./song.mp3', lyrics, language='en', fast_mode=True, regroup='cm_sp=,* /，/\n/\\_sg=.5_sp=.* /。/?/？')
     ass_out = result.to_ass(ass_path, karaoke=True, font=subtitle_properties["font"], highlight_color=subtitle_properties["font_color"])
 
     video_clips = [VideoFileClip(video) for video in video_paths]

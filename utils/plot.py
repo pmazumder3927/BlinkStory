@@ -16,7 +16,7 @@ class PlotManager:
         visual_theme = lyrics_and_scenes.split("Visual Theme:")[1].strip()
         return tags, lyrics, visual_theme
 
-    async def generate_lyrics_and_scenes(self, transcript):
+    async def generate_lyrics_and_scenes(self, transcript, num_scenes):
         prompt = r"""You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and 6 scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
         1. Tags for the song genre and style
         2. The lyrics, which should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. You can use italics to create sound effects in the song.
@@ -36,24 +36,46 @@ class PlotManager:
         ],
         )
         tags, lyrics, visual_theme = self.parse_lyrics_and_scenes(video_completion.choices[0].message.content)
-        scenes = await self.generate_scenes(transcript, lyrics, visual_theme)
+        scenes = await self.generate_scenes(transcript, lyrics, visual_theme, num_scenes)
         self.tags = tags
         self.visual_theme = visual_theme
         self.lyrics = lyrics
         self.scenes = scenes
         return tags, lyrics, visual_theme, scenes
 
-    async def generate_scenes(self, transcript, lyrics, visual_theme):
-        scenes_prompt = r"""
-        You are a creative scene writer who takes a transcript and lyrics and creates a series of 6 scene prompts to feed into a generative model to create a music video over the lyrics, which are generated from the story of the transcript. Try to discern the full context of the situation, then create each prompt as a standalone, detailed description of the scene. 
-        Be specific, and only describe the visual elements of the scene. Be creative with what each character looks like, and describe them specifically, and give them a name tag in every single scene description, so their name is visually visible. Make sure there is something to visually follow from scene-to-scene which references the lyrics, especially the chorus for impact. Be extremely extra and visually compelling, describing the scene ambiance, weather, explosions, etc.
+    async def generate_scenes(self, transcript, lyrics, visual_theme, num_scenes):
+        scenes_prompt = rf"""
+        Create a series of {num_scenes} detailed scene prompts for a music video, using a transcript and lyrics as a basis. Each prompt should stand alone, vividly describing only the visual elements of the scene. The scenes should creatively reflect the story conveyed in the transcript and use elements from the lyrics, especially the chorus, to guide the visual narrative. 
 
-        Good example prompts
+        Ensure consistency by re-describing key visual features, such as character appearances, in every scene they appear. Use creative storytelling to captivate the viewer and maintain continuity across the video, including the ambiance, weather effects, and significant visuals like explosions.
 
-        Scene 1:
-        [Setting: A large digital stage, displaying huge LED screens with patterns simulating an epic final showdown. The atmosphere is vibrant with pulsating light effects syncing with the beats.] - *Character Focus: PRAMIT and TEAM* are in the spotlight, posed victoriously with their in-game avatars displayed. The team's outfits are a fusion of sportswear and high-tech armor, glowing with the harmony of colors. - The scene embodies celebration, camaraderie, and triumph, aligning with "In this game, we’re never in doubt." - Visual Element: The camera pulls back to reveal the entire arena alight with moving visuals and fireworks of colors, creating a grand, conclusive panorama, as the outro plays with “Shower's clear, shine bright, no fear.”
+        - Each scene description should include:
+            - **Setting:** A detailed account of the scene's environment and ambiance, including lighting, background, and weather effects.
+            - **Character Descriptions:** Specify the appearance of each character involved, including unique traits or costumes, with their identity clearly marked (e.g., *Character Tag: NAME*).
+            - **Visual Elements:** Continuity items that connect scenes, with striking visuals corresponding to lyrics.
+            - **Mood and Tone:** The general ambience that matches the music and lyrics.
 
-        Begin each scene with a complete description of everything on screen, with character descriptions, color, style, and tone
+        # Steps
+
+        1. **Understand the Narrative:** Read the transcript to grasp the underlying story and themes. Identify key emotional beats in the lyrics that can be visually highlighted.
+        2. **Develop Scene Prompts:** For each of the {num_scenes}, translate themes and emotions from the lyrics into visual language.
+        3. **Identify Visual Continuity:** Choose an element that will appear in multiple scenes as a visual thread that the audience can follow.
+        4. **Reiterate Key Descriptions:** Ensure that every reappearance of visual details, especially characters, includes a full description.
+
+        # Output Format
+
+        Each scene prompt must start with a complete description, including setting, character appearances, visual elements, and mood.
+
+        # Examples
+
+        **Scene 1:**
+        [Setting: A neon-lit cityscape at night, bustling with energy and life. The scene is alive with shimmering reflections on wet pavements. Rain drizzles softly, creating a mystical glow from the street lamps.] - *Character Focus: SAMANTHA the Sloth* stands under a large umbrella, her fur shimmering with the colors of the city lights. Her attire is a casual-yet-stylish cape, cozy and vibrant. - As the lyrics echo, "Underneath the same sky, we find our way," the camera pans to show moving traffic lights forming a syncopated pattern.
+
+        # Notes
+
+        - Use vivid and imaginative language to make each scene visually dynamic and engaging.
+        - Ensure that each character's description is repeated fully for consistency, regardless of the scene number.
+        - Balance creativity with narrative coherence, ensuring the story visually flows with the music.
         """
         scenes_prompt_completion = client.chat.completions.create(
             model="gpt-4o",
@@ -135,7 +157,7 @@ class PlotManager:
             "role": "system",
             "content": [
                 {
-                "text": "Analyze the song's lyrics and scene descriptions to determine the most suitable creative choice for the subtitle font and highlight color. Ensure the font is commonly available on Windows systems.\n\n- Evaluate the emotional tone and themes of the song lyrics.\n- Assess the mood and visual style described in the scene.\n- Choose a font that aligns with the overall tone and is a standard Windows font.\n- Select a highlight color that complements the theme and aesthetics.\n\n# Steps\n\n1. **Lyric Analysis**: Examine the lyrics to understand the core emotions, themes, and atmosphere.\n2. **Scene Description Evaluation**: Evaluate the scene descriptions to grasp the visual style and mood.\n3. **Font Selection**: Choose a font that is available on Windows and matches the identified mood and theme.\n4. **Highlight Color Selection**: Select a color that fits both the lyrical themes and the scene's visual style.\n\n# Output Format\n\n- **Font**: Provide the name of the selected font.\n- **Highlight Color**: Provide the hexadecimal code for the chosen color.\n\nExample Format:\n```\n\"font\": \"[Font Name]\",\n\"highlight_color\": \"[Hex Code]\"\n```\n\n# Examples\n\n**Example Input**\n- Lyrics: [Lyrics]\n- Scene Description: [Description of the scene]\n\n**Example Output**\n- Font: \"Arial\"\n- Highlight Color: \"#00FF00\"\n\n(Use real lyrics and scene descriptions for practical application. Ensure the chosen font and color genuinely reflect the inputs.)",
+                "text": "Analyze the song's lyrics and scene descriptions to determine the most suitable creative choice for the subtitle font and highlight color. Ensure the font is commonly available on Windows systems.\n\n- Evaluate the emotional tone and themes of the song lyrics.\n- Assess the mood and visual style described in the scene.\n- Choose a font that aligns with the overall tone and is a standard Windows font.\n- Select a highlight color that complements the theme and aesthetics.\n\n# Steps\n\n1. **Lyric Analysis**: Examine the lyrics to understand the core emotions, themes, and atmosphere.\n2. **Scene Description Evaluation**: Evaluate the scene descriptions to grasp the visual style and mood.\n3. **Font Selection**: Choose a font that is available on Windows and matches the identified mood and theme.\n4. **Highlight Color Selection**: Select a color that fits both the lyrical themes and the scene's visual style.\n\n# Output Format\n\n- **Font**: Provide the name of the selected font.\n- **Highlight Color**: Provide the hexadecimal code for the chosen color.\n\nExample Format:\n```\n\"font\": \"[Font Name]\",\n\"highlight_color\": \"[Hex Code]\"\n```\n\n# Examples\n\n**Example Input**\n- Lyrics: [Lyrics]\n- Scene Description: [Description of the scene]\n\n**Example Output**\n- Font: \"Arial\"\n- Highlight Color: \"#00FF00\"\n\n(Use real lyrics and scene descriptions for practical application. Ensure the chosen font and color genuinely reflect the inputs, and try to use some lesser known fonts if possible)",
                 "type": "text"
                 }
             ]

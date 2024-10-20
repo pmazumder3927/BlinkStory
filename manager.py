@@ -9,8 +9,8 @@ from deepgram import DeepgramClient, PrerecordedOptions
 import os
 
 from utils.youtube import YouTubeUploader
-MAX_SCENES = 2
-MAX_CONCURRENT_VIDEOS = 2
+MAX_SCENES = 12
+MAX_CONCURRENT_VIDEOS = 4
 deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_TOKEN"))
 options = PrerecordedOptions(
     model="nova-2",
@@ -47,7 +47,7 @@ class GenerationManager:
         print("Transcript:", transcript)
 
         # step 2: generate lyrics and scenes from the transcript
-        tags, lyrics, visual_theme, scenes = await self.plot_manager.generate_lyrics_and_scenes(transcript)
+        tags, lyrics, visual_theme, scenes = await self.plot_manager.generate_lyrics_and_scenes(transcript, MAX_SCENES)
         print("Tags:", tags)
         print("Lyrics:", lyrics)
         print("Visual Theme:", visual_theme)
