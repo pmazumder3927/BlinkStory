@@ -126,3 +126,54 @@ class PlotManager:
             }
         )
         return json.loads(response.choices[0].message.content)
+
+    async def generate_subtitles(self, lyrics):
+        response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+            "role": "system",
+            "content": [
+                {
+                "text": "Analyze the song's lyrics and scene descriptions to determine the most suitable creative choice for the subtitle font and highlight color. Ensure the font is commonly available on Windows systems.\n\n- Evaluate the emotional tone and themes of the song lyrics.\n- Assess the mood and visual style described in the scene.\n- Choose a font that aligns with the overall tone and is a standard Windows font.\n- Select a highlight color that complements the theme and aesthetics.\n\n# Steps\n\n1. **Lyric Analysis**: Examine the lyrics to understand the core emotions, themes, and atmosphere.\n2. **Scene Description Evaluation**: Evaluate the scene descriptions to grasp the visual style and mood.\n3. **Font Selection**: Choose a font that is available on Windows and matches the identified mood and theme.\n4. **Highlight Color Selection**: Select a color that fits both the lyrical themes and the scene's visual style.\n\n# Output Format\n\n- **Font**: Provide the name of the selected font.\n- **Highlight Color**: Provide the hexadecimal code for the chosen color.\n\nExample Format:\n```\n\"font\": \"[Font Name]\",\n\"highlight_color\": \"[Hex Code]\"\n```\n\n# Examples\n\n**Example Input**\n- Lyrics: [Lyrics]\n- Scene Description: [Description of the scene]\n\n**Example Output**\n- Font: \"Arial\"\n- Highlight Color: \"#00FF00\"\n\n(Use real lyrics and scene descriptions for practical application. Ensure the chosen font and color genuinely reflect the inputs.)",
+                "type": "text"
+                }
+            ]
+            },
+            {
+            "role": "user",
+            "content": lyrics
+            },
+        ],
+        temperature=1,
+        max_tokens=2048,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+            "name": "font_schema",
+            "schema": {
+                "type": "object",
+                "required": [
+                "font",
+                "font_color"
+                ],
+                "properties": {
+                "font": {
+                    "type": "string",
+                    "description": "The name of the font to be used."
+                },
+                "font_color": {
+                    "type": "string",
+                    "description": "The color of the font, typically using a hex code."
+                }
+                },
+                "additionalProperties": False
+            },
+            "strict": True
+            }
+        }
+        )
+        return json.loads(response.choices[0].message.content)

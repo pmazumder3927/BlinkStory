@@ -16,12 +16,15 @@ async def download_file(session, url, filename):
                 f.write(await response.read())
             return filename
 
-async def merge_videos_and_song(song_url, song_lyrics, video_urls):
+async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_properties):
     model = stable_whisper.load_model("base")
     lyrics = re.sub(r'\[.*?\]|\(.*?\)', '', song_lyrics)
     result = model.align('./song.mp3', lyrics, language='en', fast_mode=True)
     ass_path = './output.ass'
-    ass_out = result.to_ass(ass_path)
+    # delete existing ass file
+    if os.path.exists(ass_path):
+        os.remove(ass_path)
+    ass_out = result.to_ass(ass_path, karaoke=True, font=subtitle_properties["font"], font_color=subtitle_properties["font_color"])
 
     async with ClientSession() as session:
         song_path = await download_file(session, song_url, 'song.mp3')

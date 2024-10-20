@@ -57,9 +57,10 @@ class GenerationManager:
         # step 3: generate a song and videos from the lyrics and scenes
         song_task_id = create_song_request(lyrics, tags)
         video_urls, song_url = await self.handle_video_generation(scenes, song_task_id)
+        subtitle_properties = await self.plot_manager.generate_subtitles(lyrics)
 
         # step 4: merge videos and send final output
-        output_path = await merge_videos_and_song(song_url, lyrics, video_urls)
+        output_path = await merge_videos_and_song(song_url, lyrics, video_urls, subtitle_properties)
         # create compressed version to send
         compressed_path = "./compressed_output.mp4"
         compress_video(output_path, compressed_path, 50)
