@@ -19,18 +19,19 @@ async def download_file(session, url, filename):
 async def merge_videos_and_song(song_url, song_lyrics, video_urls, subtitle_properties):
     model = stable_whisper.load_model("base")
     lyrics = re.sub(r'\[.*?\]|\(.*?\)', '', song_lyrics)
-    result = model.align('./song.mp3', lyrics, language='en', fast_mode=True)
-    ass_path = './output.ass'
     # delete existing ass file
     if os.path.exists(ass_path):
         os.remove(ass_path)
     print("subtitle_properties")
     print(subtitle_properties)
-    ass_out = result.to_ass(ass_path, karaoke=True, font=subtitle_properties["font"], font_color=subtitle_properties["font_color"])
 
     async with ClientSession() as session:
         song_path = await download_file(session, song_url, 'song.mp3')
         video_paths = [await download_file(session, video_url, f'video_{i+1}.mp4') for i, video_url in enumerate(video_urls)]
+
+    result = model.align('./song.mp3', lyrics, language='en', fast_mode=True)
+    ass_path = './output.ass'
+    ass_out = result.to_ass(ass_path, karaoke=True, font=subtitle_properties["font"], font_color=subtitle_properties["font_color"])
 
     video_clips = [VideoFileClip(video) for video in video_paths]
     concatenated_clip = concatenate_videoclips(video_clips)
