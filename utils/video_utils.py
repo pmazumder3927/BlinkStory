@@ -1,4 +1,7 @@
+import math
+import os
 import re
+import subprocess
 from aiohttp import ClientSession
 from moviepy.editor import VideoFileClip, AudioFileClip, concatenate_videoclips
 from moviepy.video.fx.all import loop
@@ -41,3 +44,42 @@ async def merge_videos_and_song(song_url, song_lyrics, video_urls):
 
     return output_path
 
+# Calculate target bitrate based on desired file size (in bits)
+def calculate_target_bitrate(target_size_mb, duration_s):
+    target_size_bits = target_size_mb * 8 * 1024 * 1024
+    target_bitrate = target_size_bits / duration_s
+    return target_bitrate
+
+# Get the duration of the video using ffprobe
+def get_video_duration(input_path):
+    result = subprocess.run([
+        "ffprobe", "-v", "error", "-show_entries", "format=duration", "-of",
+        "default=noprint_wrappers=1:nokey=1", input_path
+    ], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return float(result.stdout)
+
+# Compress video to target size
+def compress_video(input_path, output_path, target_size_mb):
+    duration = get_video_duration(input_path)
+    target_bitrate = calculate_target_bitrate(target_size_mb, duration)
+    target_bitrate_k = math.floor(target_bitrate / 1000)  # in kilobits per second
+
+    for attempt in range(10):
+        print(f"Attempt {attempt + 1}: Compressing with target bitrate {target_bitrate_k}k...")
+        
+        command = [
+            "ffmpeg", "-i", input_path, "-b:v", f"{target_bitrate_k}k", "-bufsize", f"{target_bitrate_k}k",
+            "-maxrate", f"{target_bitrate_k}k", "-pass", "1", "-c:a", "aac", "-b:a", "128k", output_path
+        ]
+        subprocess.run(command)
+
+        # Check if the file size is under the target size
+        output_size_mb = os.path.getsize(output_path) / (1024 * 1024)
+        if output_size_mb <= target_size_mb:
+            print(f"Compression successful: Output file size is {output_size_mb:.2f} MB")
+            break
+        else:
+            print(f"Output file size is {output_size_mb:.2f} MB, reducing bitrate further...")
+            target_bitrate_k = int(target_bitrate_k * 0.85)  # Reduce bitrate further if needed
+    else:
+        print("Warning: Maximum attempts reached. Could not reach target size.")

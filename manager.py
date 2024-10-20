@@ -4,9 +4,11 @@ from utils.api_reqs import check_song_status, check_video_status, create_song_re
 from utils.funny import update_progress_message
 from utils.plot import PlotManager
 from utils.transcript import replace_usernames, transcribe_audio
-from utils.video_utils import merge_videos_and_song
+from utils.video_utils import compress_video, merge_videos_and_song
 from deepgram import DeepgramClient, PrerecordedOptions
 import os
+
+from utils.youtube import YouTubeUploader
 MAX_SCENES = 2
 MAX_CONCURRENT_VIDEOS = 2
 deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_TOKEN"))
@@ -57,7 +59,15 @@ class GenerationManager:
 
         # step 4: merge videos and send final output
         output_path = await merge_videos_and_song(song_url, lyrics, video_urls)
-        await self.channel.send(file=discord.File(output_path))
+        # create compressed version to send
+        compressed_path = await compress_video(output_path, "compressed_output.mp4", 50)
+        await self.channel.send(file=discord.File(compressed_path))
+
+        # upload full resolution version to youtube
+        youtube_data = await self.plot_manager.generate_youtube_data(tags, lyrics, visual_theme, scenes)
+        youtube_uploader = YouTubeUploader(client_secret_file="client_secret.json")
+        link = youtube_uploader.upload_video(output_path, youtube_data=youtube_data)
+        await self.channel.send(link)
 
     async def handle_video_generation(self, scenes, song_task_id):
         initial_message = await self.channel.send("im thinking so hard rn")

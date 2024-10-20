@@ -1,3 +1,4 @@
+import json
 import openai
 import os
 
@@ -36,6 +37,9 @@ class PlotManager:
         )
         tags, lyrics, visual_theme = self.parse_lyrics_and_scenes(video_completion.choices[0].message.content)
         scenes = await self.generate_scenes(transcript, lyrics, visual_theme)
+        self.visual_theme = visual_theme
+        self.lyrics = lyrics
+        self.scenes = scenes
         return tags, lyrics, visual_theme, scenes
 
     async def generate_scenes(self, transcript, lyrics, visual_theme):
@@ -59,4 +63,64 @@ class PlotManager:
             ],
             )
         scenes = scenes_prompt_completion.choices[0].message.content.split("Scene ")[1:]
-        return [scene + f"\n\nVisual theme: {visual_theme}" for scene in scenes]
+        return scenes
+    
+    async def generate_youtube_data(self):
+        response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {
+            "role": "system",
+            "content": [
+                {
+                "type": "text",
+                "text": "Automatically generate a YouTube video title, description, and tags based on provided song lyrics and scene descriptions.\n\nUse the given lyrics and scene descriptions to create engaging and relevant content reflecting the theme, mood, and key elements of the input. Ensure the title is compelling, the description is informative, and the tags are relevant to the content.\n\n# Steps\n\n1. **Title Generation**:\n   - Identify key themes, motifs, or unique elements within the input such as \"Neon lights\", \"Digital battlefield\", or character highlights like \"KWON with AWP\".\n   - Craft a concise yet intriguing title that captures the essence of the video content and piques interest. Keep in mind that all of the content generated is from the Discord server \"Blink\" so something along the lines of \"Blink Slander: [Character] is on a roll\" is very funny\n\n2. **Description Creation**:\n   - Summarize the main narrative or themes conveyed through the lyrics and scene description.\n   - Include elements such as character highlights, digital landscapes, and key action points from the lyrics.\n   - Engage the audience by hinting at the excitement and visual spectacle of the video.\n\n3. **Tag Selection**:\n   - Extract relevant tags from prominent elements like character names, technology or gaming terms, and thematic concepts.\n   - Use a mix of broader terms and video-specific keywords to enhance discoverability.\n\n# Output Format\n\n- **Title**: A single line, ideally 50-60 characters.\n- **Description**: A short paragraph, approximately 100-200 words.\n- **Tags**: A list of 5-10 relevant keywords/phrases, separated by commas.\n\n# Example\n\n**Title**: \"Neon Nights in Digital Battlefield - KWON's Tale\"\n\n**Description**: \nJoin KWON in a thrilling adventure across a luminous digital battlefield where technology and nature collide. Experience the synergy of city lights and tactical prowess, as KWON wields the brilliant green energy of his futuristic AWP sniper rifle. With allies like Reyna and Phoenix at his side, and battles set against the backdrop of vibrant landscapes, this video captures the thrill of gaming skill and team coordination in stunning visual style. Don't miss the dynamic action and strategic gameplay as KWON and his friends take on new challenges and shine against all odds.\n\n**Tags**: KWON, AWP sniper, digital battlefield, gaming skill, teamwork, cyber landscape, Pramit, synergy, city lights, tactical gameplay\n\n# Notes\n\n- Ensure the title is SEO-friendly and likely to attract viewers.\n- The description should seamlessly integrate with YouTube's formatting constraints and viewer expectations.\n- Consider the balance between specificity and broad appeal when selecting tags."
+                }
+            ]
+            },
+        ],
+        temperature=1,
+        max_tokens=2048,
+        top_p=1,
+        frequency_penalty=0,
+        presence_penalty=0,
+        response_format={
+            "type": "json_schema",
+            "json_schema": {
+                "name": "youtube_video_metadata",
+                "strict": True,
+                "schema": {
+                    "type": "object",
+                    "properties": {
+                    "title": {
+                        "type": "string",
+                        "description": "The title of the YouTube video."
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "A detailed description of the YouTube video."
+                    },
+                    "tags": {
+                        "type": "array",
+                        "description": "A list of tags relevant to the video for better discoverability.",
+                        "items": {
+                        "type": "string"
+                        }
+                    },
+                    "categoryId": {
+                        "type": "string",
+                        "description": "The category ID of the video, e.g., '22' for 'People & Blogs'."
+                    }
+                    },
+                    "required": [
+                    "title",
+                    "description",
+                    "tags",
+                    "categoryId"
+                    ],
+                    "additionalProperties": False
+                    }
+                }
+            }
+        )
+        return json.loads(response.choices[0].message.content)

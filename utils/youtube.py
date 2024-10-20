@@ -45,18 +45,11 @@ class YouTubeUploader:
             self.api_service_name, self.api_version, credentials=self.credentials
         )
 
-    def upload_video(self, video_path, title, description, tags=None, category_id="22", privacy_status="private"):
-        if tags is None:
-            tags = []
+    def upload_video(self, video_path, privacy_status="public", youtube_data=None):
 
         # Set up the video upload details
         body = {
-            "snippet": {
-                "title": title,
-                "description": description,
-                "tags": tags,
-                "categoryId": category_id  # Category: 22 is for 'People & Blogs'
-            },
+            "snippet": youtube_data,
             "status": {
                 "privacyStatus": privacy_status  # "public", "private", or "unlisted"
             }
@@ -79,4 +72,5 @@ class YouTubeUploader:
 
         print("Upload complete!")
         print(f"Video ID: {response['id']}")
-        return response
+        # return the video url
+        return f"https://www.youtube.com/watch?v={response['id']}"
