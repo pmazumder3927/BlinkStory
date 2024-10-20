@@ -19,7 +19,7 @@ options = PrerecordedOptions(
     punctuate=True,
     diarize=True,
     detect_language=True,
-    keywords=["Reyna", "Nayo", "Sage", "Killjoy", "Jett", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Lily", "Kwon"]
+    keywords=["Reyna", "Nayo", "Sage", "Killjoy", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Lily", "Kwon"]
 )
 
 class GenerationManager:

@@ -1,7 +1,6 @@
 import os
 import time
-import deepgram
-from deepgram import FileSource, DeepgramClient, PrerecordedOptions
+from deepgram import FileSource
 
 def replace_usernames(transcript):
     username_mapping = {
