@@ -199,3 +199,13 @@ class PlotManager:
         }
         )
         return json.loads(response.choices[0].message.content)
+    
+    async def generate_progress_messages(self, lyrics):
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": "Generate a series of progress messages for a music video, based on the lyrics and scene descriptions. Make each message a short sentence, which only vaguely/indirectly hints at the content of the video. Format your answer by putting one message per line. Use slang/casual style, as a discord user, and all lowercase."},
+                {"role": "user", "content": f"Lyrics: {lyrics}\nScenes: {self.scenes}"},
+            ],
+        )
+        return response.choices[0].message.content.split("\n")

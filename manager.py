@@ -95,7 +95,7 @@ class GenerationManager:
             # Check the status of video requests
             video_urls, in_progress_videos = await check_video_status(video_ids, video_urls, in_progress_videos)
 
-            await update_progress_message(initial_message, song_url, video_urls)
+            await update_progress_message(initial_message, song_url, video_urls, custom_messages=await self.plot_manager.generate_progress_messages(''.join(scenes)))
             await asyncio.sleep(30)
 
         return video_urls, song_url
