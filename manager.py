@@ -62,9 +62,9 @@ class GenerationManager:
         # step 4: merge videos and send final output
         output_path = await merge_videos_and_song(song_url, lyrics, video_urls, subtitle_properties)
         # create compressed version to send
-        compressed_path = "./compressed_output.mp4"
-        compress_video(output_path, compressed_path, 50)
-        await self.channel.send(file=discord.File(compressed_path))
+        # compressed_path = "./compressed_output.mp4"
+        # compress_video(output_path, compressed_path, 50)
+        # await self.channel.send(file=discord.File(compressed_path))
 
         # upload full resolution version to youtube
         youtube_data = await self.plot_manager.generate_youtube_data()
