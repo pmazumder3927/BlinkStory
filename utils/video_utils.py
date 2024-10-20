@@ -19,7 +19,7 @@ async def download_file(session, url, filename):
 async def merge_videos_and_song(song_url, song_lyrics, video_urls):
     model = stable_whisper.load_model("base")
     lyrics = re.sub(r'\[.*?\]|\(.*?\)', '', song_lyrics)
-    result = model.align('./song.mp3', lyrics, language='en', fast_mode=True, regroup=False)
+    result = model.align('./song.mp3', lyrics, language='en', fast_mode=True)
     ass_path = './output.ass'
     ass_out = result.to_ass(ass_path)
 
@@ -69,7 +69,7 @@ def compress_video(input_path, output_path, target_size_mb):
         
         command = [
             "ffmpeg", "-i", input_path, "-b:v", f"{target_bitrate_k}k", "-bufsize", f"{target_bitrate_k}k",
-            "-maxrate", f"{target_bitrate_k}k", "-pass", "1", "-c:a", "aac", "-b:a", "128k", output_path
+            "-maxrate", f"{target_bitrate_k}k", "-pass", "1", "-c:a", "aac", "-b:a", "128k", output_path, "-y"
         ]
         subprocess.run(command)
 

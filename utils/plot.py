@@ -37,6 +37,7 @@ class PlotManager:
         )
         tags, lyrics, visual_theme = self.parse_lyrics_and_scenes(video_completion.choices[0].message.content)
         scenes = await self.generate_scenes(transcript, lyrics, visual_theme)
+        self.tags = tags
         self.visual_theme = visual_theme
         self.lyrics = lyrics
         self.scenes = scenes
@@ -78,6 +79,7 @@ class PlotManager:
                 }
             ]
             },
+            {"role": "user", "content": f"Tags: {self.tags}\nLyrics: {self.lyrics}\nVisual Theme: {self.visual_theme}\nScenes: {self.scenes}"}
         ],
         temperature=1,
         max_tokens=2048,

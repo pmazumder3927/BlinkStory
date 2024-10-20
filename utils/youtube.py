@@ -18,6 +18,7 @@ class YouTubeUploader:
         self.credentials = None
         self.youtube = None
         self.token_file = 'token.json'
+        self.authenticate()
 
     def authenticate(self):
         # OAuth 2.0 flow to get authenticated credentials

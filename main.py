@@ -8,7 +8,7 @@ connections = {}
 
 async def once_done(sink: discord.sinks, channel: discord.TextChannel, *args):
     generation_manager = GenerationManager(channel, sink)
-    generation_manager.generate_video()
+    await generation_manager.generate_video()
 
 @bot.command()
 async def record(ctx):
@@ -37,6 +37,7 @@ async def stop_recording(ctx):
         vc.stop_recording()
         del connections[ctx.guild.id]
         await ctx.delete()
+        await vc.disconnect()
     else:
         await ctx.respond("🚫 Not recording here")
 

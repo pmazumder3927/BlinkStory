@@ -44,6 +44,7 @@ class GenerationManager:
     async def generate_video(self):
         # step 1: extract transcript information from the audio
         transcript = await self.generate_transcript(self.sink)
+        print("Transcript:", transcript)
 
         # step 2: generate lyrics and scenes from the transcript
         tags, lyrics, visual_theme, scenes = await self.plot_manager.generate_lyrics_and_scenes(transcript)
@@ -60,11 +61,12 @@ class GenerationManager:
         # step 4: merge videos and send final output
         output_path = await merge_videos_and_song(song_url, lyrics, video_urls)
         # create compressed version to send
-        compressed_path = await compress_video(output_path, "compressed_output.mp4", 50)
+        compressed_path = "./compressed_output.mp4"
+        compress_video(output_path, compressed_path, 50)
         await self.channel.send(file=discord.File(compressed_path))
 
         # upload full resolution version to youtube
-        youtube_data = await self.plot_manager.generate_youtube_data(tags, lyrics, visual_theme, scenes)
+        youtube_data = await self.plot_manager.generate_youtube_data()
         youtube_uploader = YouTubeUploader(client_secret_file="client_secret.json")
         link = youtube_uploader.upload_video(output_path, youtube_data=youtube_data)
         await self.channel.send(link)
