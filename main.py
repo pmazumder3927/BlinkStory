@@ -38,6 +38,6 @@ async def stop_recording(ctx):
         vc.stop_recording()
         del connections[ctx.guild.id]
         await ctx.delete()
-        await ctx.respond("🚫 Not recording here")
-
+    else:
+        await ctx.respond("ur high bruh")
 bot.run(env.get("DISCORD_BOT_TOKEN"))

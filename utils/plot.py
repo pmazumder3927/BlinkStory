@@ -122,7 +122,7 @@ class PlotManager:
                 }
             ]
             },
-            {"role": "user", "content": f"Tags: {self.tags}\nLyrics: {self.lyrics}\nVisual Theme: {self.visual_theme}\nScenes: {self.scenes}"}
+            {"role": "user", "content": f"Tags: {self.tags}\nLyrics: {self.lyrics}\nScenes: {self.scenes}"}
         ],
         temperature=1,
         max_tokens=2048,
