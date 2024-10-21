@@ -19,7 +19,7 @@ options = PrerecordedOptions(
     punctuate=True,
     diarize=True,
     detect_language=True,
-    keywords=["Reyna", "Nayo", "Sage", "Killjoy", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Lily", "Kwon"]
+    keywords=["Reyna", "Nayo", "Sage", "Killjoy", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Kwon"]
 )
 
 class GenerationManager:
@@ -62,12 +62,13 @@ class GenerationManager:
         # step 4: merge videos and send final output
         output_path = await merge_videos_and_song(song_url, lyrics, video_urls, subtitle_properties)
         # create compressed version to send
-        # compressed_path = "./compressed_output.mp4"
-        # compress_video(output_path, compressed_path, 50)
-        # await self.channel.send(file=discord.File(compressed_path))
+        compressed_path = "./compressed_output.mp4"
+        compress_video(output_path, compressed_path, 50)
+        await self.channel.send(file=discord.File(compressed_path))
 
         # upload full resolution version to youtube
         youtube_data = await self.plot_manager.generate_youtube_data()
+        print("Youtube Data:", youtube_data)
         youtube_uploader = YouTubeUploader(client_secret_file="client_secret.json")
         link = youtube_uploader.upload_video(output_path, youtube_data=youtube_data)
         await self.channel.send(link)

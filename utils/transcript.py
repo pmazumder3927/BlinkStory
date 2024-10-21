@@ -1,6 +1,7 @@
 import os
 import time
 from deepgram import FileSource
+import httpx
 
 def replace_usernames(transcript):
     username_mapping = {
@@ -16,6 +17,7 @@ def replace_usernames(transcript):
     return transcript
 
 async def transcribe_audio(sink, deepgram, options):
+
     words_list = []
     for user_id, audio in sink.audio_data.items():
         audio_data = audio.file.read()
@@ -25,7 +27,7 @@ async def transcribe_audio(sink, deepgram, options):
         with open(f"audio/{user_id}/{user_id}_{time.time()}.wav", "wb") as f:
             f.write(audio_data)
 
-        response = deepgram.listen.prerecorded.v("1").transcribe_file(payload, options)
+        response = deepgram.listen.prerecorded.v("1").transcribe_file(payload, options, timeout=httpx.Timeout(300.0, connect=10))
         words = response["results"]["channels"][0]["alternatives"][0]["words"]
         words = [word.to_dict() for word in words]
 
