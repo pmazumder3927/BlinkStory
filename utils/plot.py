@@ -26,8 +26,8 @@ class PlotManager:
         1. Review the transcript to identify key moments, themes, and interactions between the friends. Especially note humorous and/or memorable moments or banter
         2. Determine the overall mood and style of the music video based on the conversation
         3. Decide on the song's genre and style tags that best match the identified theme. Keep these as descriptive music genres and vibes
-        4. Create a lyrics structure that weaves in the identified moments, references specific people, and matches the selected music style, along with using vernacular that fits the vibe of the conversations
-        5. Assign parts of the lyrics to different singers if multiple voices will enhance the narrative, specifying their voice tones where applicable.
+        4. Create a lyrics structure that weaves in the identified moments, references specific people, and matches the selected music style, along with using vernacular that fits the vibe of the conversations. Make sure there's a chorus which is repeated multiple times.
+        5. Assign parts of the lyrics to different singers if multiple voices will enhance the narrative, such as adding a rap verse.
         6. Use italics for sound effects or non-verbal moments if they contribute to the song.
 
         # Output Format
@@ -42,10 +42,10 @@ class PlotManager:
 
         Tags: rock indie acoustic romantic
         Lyrics: 
-        [Verse: Female singer with a soft, warm tone]
-        There's a moment, when you laughed, *like the morning sunshine*
-        [Chorus: Deep male voice, calm and soothing]
-        Your stories, they paint, *colors in my mind*
+        [Verse]
+        There's a moment, when you laughed, like the morning sunshine *bird chirps*...
+        [Chorus]
+        Your stories, they paint, colors in my mind *gunshots*...
 
         (Real examples would be extended and more detailed with references derived from the transcript.)
         """

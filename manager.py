@@ -1,4 +1,5 @@
 import asyncio
+import time
 import discord
 from utils.api_reqs import check_song_status, check_video_status, create_song_request, create_video_request
 from utils.funny import update_progress_message
@@ -10,7 +11,7 @@ import os
 
 from utils.youtube import YouTubeUploader
 MAX_SCENES = 12
-MAX_CONCURRENT_VIDEOS = 4
+MAX_CONCURRENT_VIDEOS = 3
 deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_TOKEN"))
 options = PrerecordedOptions(
     model="nova-2",
@@ -80,6 +81,9 @@ class GenerationManager:
         next_video_index = 0
         song_url = None
 
+        start_time = time.time()
+        total_vids = len(scenes)
+
         while None in video_urls or song_url is None:
             # Start new video requests
             while in_progress_videos < MAX_CONCURRENT_VIDEOS and next_video_index < MAX_SCENES:
@@ -95,7 +99,19 @@ class GenerationManager:
             # Check the status of video requests
             video_urls, in_progress_videos = await check_video_status(video_ids, video_urls, in_progress_videos)
 
-            await update_progress_message(initial_message, song_url, video_urls, custom_messages=await self.plot_manager.generate_progress_messages(''.join(scenes)))
+            # Calculate progress
+            completed_videos = len([url for url in video_urls if url is not None])
+            progress_percent = (completed_videos / total_vids) * 100 if total_vids > 0 else 0
+
+            # Estimate time remaining based on elapsed time and progress
+            elapsed_time = time.time() - start_time
+            if progress_percent > 0:
+                estimated_total_time = elapsed_time / (progress_percent / 100)
+                remaining_time = estimated_total_time - elapsed_time
+            else:
+                remaining_time = -1
+            progress_messages = await self.plot_manager.generate_progress_messages(''.join(scenes))
+            await update_progress_message(initial_message, remaining_time, custom_messages=progress_messages)
             await asyncio.sleep(30)
 
         return video_urls, song_url
