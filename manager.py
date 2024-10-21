@@ -47,10 +47,9 @@ class GenerationManager:
         print("Transcript:", transcript)
 
         # step 2: generate lyrics and scenes from the transcript
-        tags, lyrics, visual_theme, scenes = await self.plot_manager.generate_lyrics_and_scenes(transcript, MAX_SCENES)
+        tags, lyrics, scenes = await self.plot_manager.generate_lyrics_and_scenes(transcript, MAX_SCENES)
         print("Tags:", tags)
         print("Lyrics:", lyrics)
-        print("Visual Theme:", visual_theme)
         for i, scene in enumerate(scenes):
             print(f"Scene {i+1}: {scene}")
 

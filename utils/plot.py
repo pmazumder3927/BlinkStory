@@ -13,19 +13,41 @@ class PlotManager:
     def parse_lyrics_and_scenes(self, lyrics_and_scenes):
         tags = lyrics_and_scenes.split("Tags:")[1].split("Lyrics:")[0].strip()
         lyrics = lyrics_and_scenes.split("Lyrics:")[1].split("Visual Theme:")[0].strip()
-        visual_theme = lyrics_and_scenes.split("Visual Theme:")[1].strip()
-        return tags, lyrics, visual_theme
+        return tags, lyrics
 
     async def generate_lyrics_and_scenes(self, transcript, num_scenes):
-        prompt = r"""You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and 6 scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
-        1. Tags for the song genre and style
-        2. The lyrics, which should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. You can use italics to create sound effects in the song.
-        3. A visual theme paragraph, which should be a semi-long description of the visual theme of the music video. Example: "realistic cinematic cyberpunk style in an fps game, explosions in the background, photorealistic music video", or maybe "asurrealist, animated, dreamlike illustrations in a painted world" along with a synopsis of the theme of the song.
+        prompt = r"""
+        Turn a Discord call transcript between friends into a song by creating a set of lyrics that highlights specific moments in the conversation and fits within the context of a music video. 
 
-        Reply in the format of (example output):
-        Tags: rock grunge pop
-        Lyrics: [lyrics]
-        Visual Theme: [visual theme sentences]
+        The lyrics should establish a strong narrative, personalized and engagingly referencing the conversation. Make as many clever references as you can. You may incorporate multiple singers to enhance the storytelling and ensure the lyrics last around 3 minutes.
+
+        # Steps
+
+        1. Review the transcript to identify key moments, themes, and interactions between the friends. Especially note humorous and/or memorable moments or banter
+        2. Determine the overall mood and style of the music video based on the conversation
+        3. Decide on the song's genre and style tags that best match the identified theme. Keep these as descriptive music genres and vibes
+        4. Create a lyrics structure that weaves in the identified moments, references specific people, and matches the selected music style, along with using vernacular that fits the vibe of the conversations
+        5. Assign parts of the lyrics to different singers if multiple voices will enhance the narrative, specifying their voice tones where applicable.
+        6. Use italics for sound effects or non-verbal moments if they contribute to the song.
+
+        # Output Format
+
+        Reply with:
+        - **Tags:** A list of genre or style tags that best describe the music's theme, such as pop, classical, baroque, opera, etc.
+        - **Lyrics:** The complete set of lyrics, integrated with specific references to the transcript.
+        - Use square brackets to denote different singers and describe their voice tone.
+        - Italicize any sound effects or non-verbal components.
+
+        # Examples
+
+        Tags: rock indie acoustic romantic
+        Lyrics: 
+        [Verse: Female singer with a soft, warm tone]
+        There's a moment, when you laughed, *like the morning sunshine*
+        [Chorus: Deep male voice, calm and soothing]
+        Your stories, they paint, *colors in my mind*
+
+        (Real examples would be extended and more detailed with references derived from the transcript.)
         """
         video_completion = self.client.chat.completions.create(
             model="gpt-4o",
@@ -35,15 +57,14 @@ class PlotManager:
             {"role": "user", "content": transcript},
         ],
         )
-        tags, lyrics, visual_theme = self.parse_lyrics_and_scenes(video_completion.choices[0].message.content)
-        scenes = await self.generate_scenes(transcript, lyrics, visual_theme, num_scenes)
+        tags, lyrics = self.parse_lyrics_and_scenes(video_completion.choices[0].message.content)
+        scenes = await self.generate_scenes(transcript, lyrics, num_scenes)
         self.tags = tags
-        self.visual_theme = visual_theme
         self.lyrics = lyrics
         self.scenes = scenes
-        return tags, lyrics, visual_theme, scenes
+        return tags, lyrics, scenes
 
-    async def generate_scenes(self, transcript, lyrics, visual_theme, num_scenes):
+    async def generate_scenes(self, transcript, lyrics, num_scenes):
         scenes_prompt = rf"""
         Create a series of {num_scenes} detailed scene prompts for a music video, using a transcript and lyrics as a basis. Each prompt should stand alone, vividly describing only the visual elements of the scene. The scenes should creatively reflect the story conveyed in the transcript and use elements from the lyrics, especially the chorus, to guide the visual narrative. 
 
@@ -60,7 +81,7 @@ class PlotManager:
         1. **Understand the Narrative:** Read the transcript to grasp the underlying story and themes. Identify key emotional beats in the lyrics that can be visually highlighted.
         2. **Develop Scene Prompts:** For each of the {num_scenes}, translate themes and emotions from the lyrics into visual language.
         3. **Identify Visual Continuity:** Choose an element that will appear in multiple scenes as a visual thread that the audience can follow.
-        4. **Reiterate Key Descriptions:** Ensure that every reappearance of visual details, especially characters, includes a full description.
+        4. **Reiterate Key Descriptions:** Ensure that every reappearance of visual details, especially characters, includes a full description. The scene descriptions should be getting longer and more interesting/intricate as the song progresses, so higher scene numbers should have more detailed descriptions.
 
         # Output Format
 
