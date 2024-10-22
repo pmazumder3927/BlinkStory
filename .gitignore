@@ -12,3 +12,5 @@ token.json
 *.mbtree
 *.log
 transcript.txt
+/checkpoints
+fake.npy

@@ -81,7 +81,7 @@ async def on_message(message):
     if message.channel.id == CHANNEL_ID and not message.author.bot:
         # Create a placeholder message that mirrors the original message
         # get the last messages for the day as context in the channel
-        messages = await message.channel.history(limit=10000).flatten()
+        messages = await message.channel.history(limit=100).flatten()
         # output them as a string and reverse order
         messages_string = "\n".join([f"{m.author.display_name}: {m.content}" for m in messages[::-1]])
         print(messages_string)

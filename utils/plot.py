@@ -68,8 +68,8 @@ class PlotManager:
         # Examples
 
         **Scene 1:**
-        [Setting: A neon-lit cityscape at night, bustling with energy and life. The scene is alive with shimmering reflections on wet pavements. Rain drizzles softly, creating a mystical glow from the street lamps.] - *Character Focus: SAMANTHA the Sloth* stands under a large umbrella, her fur shimmering with the colors of the city lights. Her attire is a casual-yet-stylish cape, cozy and vibrant. - As the lyrics echo, "Underneath the same sky, we find our way," the camera pans to show moving traffic lights forming a syncopated pattern.
-
+        [Setting: A neon-lit cityscape at night, bustling with energy and life. The scene is alive with shimmering reflections on wet pavements. Rain drizzles softly, creating a mystical glow from the street lamps]
+        [Character Focus: LUCY] an asian girl with cyberpunk attire stands in the middle of the street, her holographic message saying LUCY above her head as she descends from the sky
         # Notes
 
         - Use vivid and imaginative language to make each scene visually dynamic and engaging.
@@ -214,5 +214,7 @@ async def generate_message_reply(original_message):
     response = client.chat.completions.create(
         model="ft:gpt-4o-mini-2024-07-18:fearsha-inc:blink-general:AL2SSCiJ",
         messages=[{"role": "system", "content": completion_prompt}, {"role": "user", "content": original_message}],
+        temperature=0.7,
+        max_tokens=1024
     )
     return response.choices[0].message.content
