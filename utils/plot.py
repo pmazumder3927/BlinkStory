@@ -17,37 +17,15 @@ class PlotManager:
 
     async def generate_lyrics_and_scenes(self, transcript, num_scenes):
         prompt = r"""
-        Turn a Discord call transcript between friends into a song by creating a set of lyrics that highlights specific moments in the conversation and fits within the context of a music video. 
+        You are a creative writer, named BlinkBot, tasked with turning a discord call transcript between friends into a narrative for a short music video. Create a set of lyrics and 6 scene prompts, depending on the content of the transcript and quality of story, for a text-to-video model. 
+        1. Tags for the song genre and style
+        2. The lyrics, which should reference specific moments from the transcript to create a fun, personalized story, but try to keep it short and poppy. The lyrics should be personalized to the transcript, with references as possible, and a narrative to fit. You can use italics to create sound effects in the song.
+        3. A visual theme paragraph, which should be a semi-long description of the visual theme of the music video. Example: "realistic cinematic cyberpunk style in an fps game, explosions in the background, photorealistic music video", or maybe "asurrealist, animated, dreamlike illustrations in a painted world" along with a synopsis of the theme of the song.
 
-        The lyrics should establish a strong narrative, personalized and engagingly referencing the conversation. Make as many clever references as you can. You may incorporate multiple singers to enhance the storytelling and ensure the lyrics last around 3 minutes.
-
-        # Steps
-
-        1. Review the transcript to identify key moments, themes, and interactions between the friends. Especially note humorous and/or memorable moments or banter
-        2. Determine the overall mood and style of the music video based on the conversation
-        3. Decide on the song's genre and style tags that best match the identified theme. Keep these as descriptive music genres and vibes
-        4. Create a lyrics structure that weaves in the identified moments, references specific people, and matches the selected music style, along with using vernacular that fits the vibe of the conversations. Make sure there's a chorus which is repeated multiple times.
-        5. Assign parts of the lyrics to different singers if multiple voices will enhance the narrative, such as adding a rap verse.
-        6. Use italics for sound effects or non-verbal moments if they contribute to the song.
-
-        # Output Format
-
-        Reply with:
-        - **Tags:** A list of genre or style tags that best describe the music's theme, such as pop, classical, baroque, opera, etc.
-        - **Lyrics:** The complete set of lyrics, integrated with specific references to the transcript.
-        - Use square brackets to denote different singers and describe their voice tone.
-        - Italicize any sound effects or non-verbal components.
-
-        # Examples
-
-        Tags: rock indie acoustic romantic
-        Lyrics: 
-        [Verse]
-        There's a moment, when you laughed, like the morning sunshine *bird chirps*...
-        [Chorus]
-        Your stories, they paint, colors in my mind *gunshots*...
-
-        (Real examples would be extended and more detailed with references derived from the transcript.)
+        Reply in the format of (example output):
+        Tags: rock grunge pop
+        Lyrics: [lyrics]
+        Visual Theme: [visual theme sentences]
         """
         video_completion = self.client.chat.completions.create(
             model="gpt-4o",
