@@ -2,6 +2,9 @@ import discord
 from dotenv import load_dotenv
 from os import environ as env
 from manager import GenerationManager
+from utils.plot import generate_message_reply
+
+CHANNEL_ID = 1298169696356536371
 
 class BotManager:
     def __init__(self):
@@ -61,7 +64,7 @@ class BotManager:
 # Initialize BotManager
 bot_manager = BotManager()
 
-bot = discord.Bot()
+bot = discord.Bot(intents=discord.Intents.all())
 
 # Bind the commands to the BotManager instance
 @bot.command()
@@ -71,5 +74,19 @@ async def record(ctx):
 @bot.command()
 async def stop_recording(ctx):
     await bot_manager.stop_recording(ctx)
+
+
+@bot.event
+async def on_message(message):
+    if message.channel.id == CHANNEL_ID and not message.author.bot:
+        # Create a placeholder message that mirrors the original message
+        # get the last messages for the day as context in the channel
+        messages = await message.channel.history(limit=10000).flatten()
+        # output them as a string and reverse order
+        messages_string = "\n".join([f"{m.author.display_name}: {m.content}" for m in messages[::-1]])
+        print(messages_string)
+        mirrored_message = await generate_message_reply(messages_string)
+        if mirrored_message != "":
+            await message.channel.send(mirrored_message)
 
 bot.run(env.get("DISCORD_BOT_TOKEN"))

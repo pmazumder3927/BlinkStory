@@ -230,3 +230,11 @@ class PlotManager:
             ],
         )
         return response.choices[0].message.content.split("\n")
+
+async def generate_message_reply(original_message):
+    completion_prompt = "continue the discord chat. Only reference/reply to people who are in the current chat's context, don't @ people who aren't messaging currently. logically continue the conversation when asked of you, and don't post links"
+    response = client.chat.completions.create(
+        model="ft:gpt-4o-mini-2024-07-18:fearsha-inc:blink-general:AL2SSCiJ",
+        messages=[{"role": "system", "content": completion_prompt}, {"role": "user", "content": original_message}],
+    )
+    return response.choices[0].message.content
