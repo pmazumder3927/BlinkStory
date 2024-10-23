@@ -3,6 +3,8 @@ from dotenv import load_dotenv
 from os import environ as env
 from manager import GenerationManager
 from utils.plot import generate_message_reply
+from utils.synthesis import synthesize_and_stream_audio
+from utils.sinks import DeepgramSink
 
 CHANNEL_ID = 1298169696356536371
 
@@ -20,6 +22,22 @@ class BotManager:
         
         # Mark that the generation is complete
         self.generation_in_progress = False
+    
+    async def imitate(self, ctx):
+        # if already in a vc, don't connect again
+        if ctx.guild.id in self.connections:
+            self.connections[ctx.guild.id].stop_recording()
+        voice = ctx.author.voice
+        if not voice:
+            await ctx.respond("hop in vc")
+            return
+
+        vc = await voice.channel.connect()
+        self.connections.update({ctx.guild.id: vc})
+        async def when_done(sink: discord.sinks, channel: discord.TextChannel, *args):
+            await vc.disconnect()
+        sink = DeepgramSink()
+        vc.start_recording(sink, when_done, ctx)
 
     async def record(self, ctx):
         # if generation is in progress, don't start another one
@@ -75,6 +93,9 @@ async def record(ctx):
 async def stop_recording(ctx):
     await bot_manager.stop_recording(ctx)
 
+@bot.command()
+async def imitate(ctx):
+    await bot_manager.imitate(ctx)
 
 @bot.event
 async def on_message(message):
