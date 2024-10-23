@@ -27,6 +27,7 @@ class BotManager:
         # if already in a vc, don't connect again
         if ctx.guild.id in self.connections:
             self.connections[ctx.guild.id].stop_recording()
+            return
         voice = ctx.author.voice
         if not voice:
             await ctx.respond("hop in vc")
@@ -36,7 +37,7 @@ class BotManager:
         self.connections.update({ctx.guild.id: vc})
         async def when_done(sink: discord.sinks, channel: discord.TextChannel, *args):
             await vc.disconnect()
-        sink = RealTimeTranscriptionSink(transcription_method='faster-whisper')
+        sink = RealTimeTranscriptionSink(transcription_method='deepgram')
         vc.start_recording(sink, when_done, ctx)
 
     async def record(self, ctx):

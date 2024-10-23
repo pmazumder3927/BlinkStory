@@ -10,6 +10,7 @@ from deepgram import DeepgramClient, PrerecordedOptions
 import os
 
 from utils.youtube import YouTubeUploader
+from utils.transcript import BOOST_WORDS
 MAX_SCENES = 12
 MAX_CONCURRENT_VIDEOS = 3
 deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_TOKEN"))
@@ -20,7 +21,7 @@ options = PrerecordedOptions(
     punctuate=True,
     diarize=True,
     detect_language=True,
-    keywords=["Reyna", "Nayo", "Sage", "Killjoy", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Omen", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Kwon"]
+    keywords=BOOST_WORDS
 )
 
 class GenerationManager:

@@ -3,6 +3,8 @@ import time
 from deepgram import FileSource
 import httpx
 
+BOOST_WORDS = ["Reyna", "Nayo", "Sage", "Killjoy", "Viper", "Raze", "Skye", "Cypher", "Sova", "Brimstone", "Phoenix", "KAY/O", "Chamber", "Neon", "Fade", "Deadlock", "Pramit", "Jon", "Lucy", "Kwon"]
+
 def replace_usernames(transcript):
     username_mapping = {
         "Pramit Pegger": "Kwon",

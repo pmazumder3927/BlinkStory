@@ -218,3 +218,15 @@ async def generate_message_reply(original_message):
         max_tokens=1024
     )
     return response.choices[0].message.content
+
+async def generate_voice_response(transcript_history):
+    completion_prompt = "continue the voice chat, which is labeled by user ids in a discord call. Try to be friendly, and respond to the user in a conversational manner. If you don't know what to say, just say something short like \"ok\" or \"uh huh\" or \"yeah\" or something similar.\n Reply as BlinkBot: , not as Speaker"
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "system", "content": completion_prompt}, *transcript_history],
+        temperature=0.7,
+        max_tokens=1024
+    )
+    new_history = transcript_history.copy()
+    new_history.append({"role": "assistant", "content": response.choices[0].message.content})
+    return new_history
