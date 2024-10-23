@@ -1,77 +1,29 @@
 import os
-import wave
+import asyncio
+import numpy as np
 from discord.ext import commands
 from discord.sinks import Sink
+
+# Import the WhisperModel from faster-whisper
+from faster_whisper import WhisperModel
+
+# Import Deepgram client
 from deepgram import DeepgramClient, DeepgramClientOptions, LiveTranscriptionEvents, LiveOptions
-import asyncio
 
-class UserAudioFiles:
-    def __init__(self, user_id, n_channels, sample_rate, loop):
-        self.sample_rate = sample_rate
-        self.n_channels = n_channels
-        # create a directory for the user if it doesn't exist
-        os.makedirs(f"recordings/{user_id}", exist_ok=True)
-        self.user_id = user_id
-        file_directory = os.listdir(f"recordings/{user_id}")
-        self.latest_file_idx = max(1, len(file_directory) - 1)
-        latest_file = wave.open(self.from_index(self.latest_file_idx), 'wb')
-        latest_file.setnchannels(n_channels)
-        latest_file.setsampwidth(2)
-        latest_file.setframerate(sample_rate)
-
-        self.latest_file = latest_file
-        self.write_queue = asyncio.Queue()
-        self.loop = loop
-        self.loop.create_task(self.manage_files())
-
-    def from_index(self, idx):
-        return f"recordings/{self.user_id}/{idx}.wav"
-
-    def strip_leading_silence(self, data):
-        # Strip only the leading silence and return the rest of the data
-        silence_chunk_size = 2  # Since we're using 16-bit samples, each sample is 2 bytes
-        idx = 0
-        while idx < len(data) - silence_chunk_size:
-            # Check 2 bytes at a time for leading silence
-            if data[idx:idx+silence_chunk_size] != b'\x00\x00':
-                self.stripped_leading_silence = True  # Stop stripping silence after finding sound
-                return data[idx:]
-            idx += silence_chunk_size
-        return b''  # If the entire data chunk is silence, return empty
-
-    async def manage_files(self):
-        while True:
-            await asyncio.sleep(1)
-            if self.write_queue.qsize() > 0:
-                # current clip length
-                current_length = self.latest_file.tell()
-                data = b''
-                while not self.write_queue.empty():
-                    data += await self.write_queue.get()
-                data = self.strip_leading_silence(data)
-                self.latest_file.writeframes(data)
-            print(self.latest_file.tell())
-            if self.latest_file.tell() >= self.sample_rate * 15:
-                self.latest_file_idx += 1
-                self.latest_file = self.prep_new_file(self.from_index(self.latest_file_idx))
-    def prep_new_file(self, dir):
-        new_file = wave.open(dir, 'wb')
-        new_file.setnchannels(self.n_channels)
-        new_file.setsampwidth(2)
-        new_file.setframerate(self.sample_rate)
-        return new_file
-    def write(self, data):
-        self.loop.call_soon_threadsafe(self.write_queue.put_nowait, data)
-
-class DeepgramSink(Sink):
-    def __init__(self, *, filters=None):
+class RealTimeTranscriptionSink(Sink):
+    def __init__(self, *, filters=None, transcription_method="deepgram"):
         super().__init__(filters=filters)
-        self.audio_queue = asyncio.Queue()
         self.loop = asyncio.get_event_loop()
-        self.dg_connection = None
         self.n_channels = None
         self.sample_rate = None
-        self.audio_files = {}
+        self.transcription_method = transcription_method.lower()
+        self.audio_buffer = b''
+        self.buffer_lock = asyncio.Lock()
+        self.transcription_task = None
+        self.is_running = True
+        self.audio_queue = asyncio.Queue()
+        self.dg_connection = None  # For Deepgram
+        self.model = None          # For faster-whisper
 
     def init(self, vc):
         super().init(vc)
@@ -81,13 +33,19 @@ class DeepgramSink(Sink):
         self.setup_sink()
 
     def setup_sink(self):
-        self.loop.create_task(self.setup_deepgram())
-        self.deepgram_task = self.loop.create_task(self.transcribe_audio())
-        for directory in os.listdir("recordings"):
-            self.audio_files[directory] = UserAudioFiles(directory, self.n_channels, self.sample_rate, self.loop)
+        if self.transcription_method == "deepgram":
+            self.loop.create_task(self.setup_deepgram())
+            self.transcription_task = self.loop.create_task(self.transcribe_audio_deepgram())
+        elif self.transcription_method == "faster-whisper":
+            # Initialize the faster-whisper model
+            self.model = WhisperModel("large-v3", device="cuda", compute_type="float16")
+            self.transcription_task = self.loop.create_task(self.transcribe_audio_whisper())
+        else:
+            raise ValueError("Invalid transcription method specified.")
 
+    ### Deepgram Setup and Transcription ###
     async def setup_deepgram(self):
-        # Initialize Deepgram client
+        print("Setting up Deepgram transcription.")
         config: DeepgramClientOptions = DeepgramClientOptions(
             options={"keepalive": "true"}
         )
@@ -102,14 +60,14 @@ class DeepgramSink(Sink):
         
         # Start the Deepgram websocket connection
         options: LiveOptions = LiveOptions(
-            model="nova-2",
+            model="nova",
             language="en-US",
             smart_format=True,
             encoding="linear16",
             channels=self.n_channels,
             sample_rate=self.sample_rate,
             interim_results=True,
-            utterance_end_ms="1000",
+            utterance_end_ms=1000,
             vad_events=True,
             endpointing=300,
         )
@@ -118,32 +76,18 @@ class DeepgramSink(Sink):
             print("Failed to connect to Deepgram")
             return
 
-    async def transcribe_audio(self):
-        while True:
+        print("Deepgram transcription setup complete.")
+
+    async def transcribe_audio_deepgram(self):
+        print("Deepgram transcription started.")
+        while self.is_running:
             data = await self.audio_queue.get()
             if data is None:
                 break
             if self.dg_connection:
-                res = await self.dg_connection.send(data)
+                await self.dg_connection.send(data)
 
-    def write(self, data, user):
-        # In the write method, we receive audio data chunks
-        # We'll put the data into the audio queue to be sent to Deepgram
-        # Note: data is in bytes
-        if (self.n_channels or self.sample_rate) is None:
-            return
-        self.loop.call_soon_threadsafe(self.audio_queue.put_nowait, data)
-        if not user in self.audio_files:
-            self.audio_files[user] = UserAudioFiles(user, self.n_channels, self.sample_rate, self.loop)
-        self.audio_files[user].write(data)
-    
-    def cleanup(self):
-        super().cleanup()
-        # Signal the transcribe_audio task to exit
-        self.loop.call_soon_threadsafe(self.audio_queue.put_nowait, None)
-        # Wait for the Deepgram connection to close
-        if self.dg_connection:
-            self.loop.create_task(self.dg_connection.finish())
+        print("Deepgram transcription stopped.")
 
     # Event handlers for Deepgram
     async def on_open(self, dg, *args, **kwargs):
@@ -154,12 +98,99 @@ class DeepgramSink(Sink):
         if len(sentence) == 0:
             return
         if result.is_final:
-            print(f"Transcription: {sentence}")
+            print(f"Deepgram Transcription: {sentence}")
         else:
-            print(f"Interim Transcription: {sentence}")
+            print(f"Deepgram Interim Transcription: {sentence}")
 
     async def on_close(self, dg, *args, **kwargs):
         print("Deepgram Connection Closed")
 
     async def on_error(self, dg, error, **kwargs):
         print(f"Deepgram Error: {error}")
+
+    ### Faster-Whisper Transcription ###
+    async def transcribe_audio_whisper(self):
+        print("Whisper transcription started.")
+
+        chunk_length_s = 10  # Duration of each audio chunk in seconds
+        stream_chunk_s = 2  # Process every 2 seconds
+        stride_length_s = (1.0, 1.0)  # Overlap of 1 second on each side
+
+        size_of_sample = 2  # Since we're using int16 (2 bytes per sample)
+        channels = self.n_channels
+
+        # Calculate sizes in bytes
+        chunk_size = int(self.sample_rate * chunk_length_s * channels * size_of_sample)
+        stream_chunk_size = int(self.sample_rate * stream_chunk_s * channels * size_of_sample)
+        stride_left_size = int(self.sample_rate * stride_length_s[0] * channels * size_of_sample)
+        stride_right_size = int(self.sample_rate * stride_length_s[1] * channels * size_of_sample)
+
+        buffer = b''
+
+        while self.is_running:
+            await asyncio.sleep(stream_chunk_s)
+            async with self.buffer_lock:
+                if not self.audio_buffer:
+                    continue
+                buffer += self.audio_buffer
+                self.audio_buffer = b''
+
+            while len(buffer) >= chunk_size:
+                # Extract the chunk to process
+                chunk = buffer[:chunk_size]
+                buffer = buffer[stream_chunk_size:]
+
+                # Apply strides (overlaps)
+                left_stride = buffer[:stride_left_size] if len(buffer) >= stride_left_size else buffer
+                right_stride = buffer[:stride_right_size] if len(buffer) >= stride_right_size else buffer
+
+                # Combine strides and chunk
+                chunk_with_strides = left_stride + chunk + right_stride
+
+                # Convert bytes to numpy array
+                audio_array = np.frombuffer(chunk_with_strides, np.int16).astype(np.float32) / 32768.0
+
+                # Transcribe using faster-whisper
+                segments, _ = self.model.transcribe(
+                    audio_array,
+                    language="en",
+                    beam_size=5,
+                    without_timestamps=True
+                )
+
+                transcript = "".join([segment.text for segment in segments])
+
+                if transcript.strip():
+                    print(f"Whisper Transcription: {transcript}")
+
+        print("Whisper transcription stopped.")
+
+    ### Write Method ###
+    def write(self, data, user):
+        if (self.n_channels or self.sample_rate) is None:
+            return
+
+        if self.transcription_method == "deepgram":
+            # Put the data into the audio queue for Deepgram
+            self.loop.call_soon_threadsafe(self.audio_queue.put_nowait, data)
+        elif self.transcription_method == "faster-whisper":
+            # Buffer the audio data for faster-whisper
+            async def buffer_audio():
+                async with self.buffer_lock:
+                    self.audio_buffer += data
+            self.loop.create_task(buffer_audio())
+
+    ### Cleanup Method ###
+    def cleanup(self):
+        super().cleanup()
+        self.is_running = False
+        if self.transcription_task:
+            self.transcription_task.cancel()
+
+        if self.transcription_method == "deepgram":
+            # Signal the transcription task to exit
+            self.loop.call_soon_threadsafe(self.audio_queue.put_nowait, None)
+            # Wait for the Deepgram connection to close
+            if self.dg_connection:
+                self.loop.create_task(self.dg_connection.finish())
+        print("Cleanup complete.")

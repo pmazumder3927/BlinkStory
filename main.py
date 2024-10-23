@@ -4,7 +4,7 @@ from os import environ as env
 from manager import GenerationManager
 from utils.plot import generate_message_reply
 from utils.synthesis import synthesize_and_stream_audio
-from utils.sinks import DeepgramSink
+from utils.sinks import RealTimeTranscriptionSink
 
 CHANNEL_ID = 1298169696356536371
 
@@ -36,7 +36,7 @@ class BotManager:
         self.connections.update({ctx.guild.id: vc})
         async def when_done(sink: discord.sinks, channel: discord.TextChannel, *args):
             await vc.disconnect()
-        sink = DeepgramSink()
+        sink = RealTimeTranscriptionSink(transcription_method='faster-whisper')
         vc.start_recording(sink, when_done, ctx)
 
     async def record(self, ctx):
