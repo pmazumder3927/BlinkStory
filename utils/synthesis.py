@@ -1,6 +1,9 @@
+import wave
+from discord import FFmpegPCMAudio
 import pyaudio
 import requests
 import ormsgpack
+from pydub import AudioSegment
 from tools.commons import ServeReferenceAudio, ServeTTSRequest
 from tools.file import audio_to_bytes, read_ref_text
 
@@ -34,19 +37,33 @@ async def synthesize_and_stream_audio(vc, text, reference_audio, reference_text,
 
     if response.status_code == 200:
         audio_format = pyaudio.paInt16  # Assuming 16-bit PCM format
-        wf = pyaudio.PyAudio()
-        stream = wf.open(format=audio_format, channels=1, rate=44100, output=True)
+        # save response.content to file, overwrite if exists
+        test_wav = wave.open("temp.wav", "wb")
+        test_wav.setnchannels(1)
+        test_wav.setsampwidth(2)
+        test_wav.setframerate(44100)
+        test_wav.writeframes(response.content)
+        test_wav.close()
+        vc.play(FFmpegPCMAudio("temp.wav"))
 
-        # Play the audio stream in Discord VC
-        try:
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk:
-                    stream.write(chunk)
-                    # vc.send_audio_packet(chunk, encode=False)  # Send to discord voice channel
-        finally:
-            stream.stop_stream()
-            stream.close()
-            wf.terminate()
+        # wf = pyaudio.PyAudio()
+        # stream = wf.open(format=audio_format, channels=1, rate=44100, output=True)
+
+        # # Play the audio stream in Discord VC
+        # try:
+        #     for chunk in response.iter_content(chunk_size=1024):
+        #         if chunk:
+        #             # stream.write(chunk)
+        #             # turn 44100 1 channel to 48000 2 channel
+        #             audio_segment = AudioSegment.from_raw(chunk, sample_width=2, frame_rate=44100, channels=1)
+        #             audio_segment = audio_segment.set_frame_rate(48000).set_sample_width(2).set_channels(2)
+        #             # save segment
+        #             audio_segment.export("temp.wav", format="wav")
+        #             vc.send_audio_packet(audio_segment.raw_data, encode=True)
+        # finally:
+        #     stream.stop_stream()
+        #     stream.close()
+        #     wf.terminate()
     else:
         print(f"Request failed with status code {response.status_code}")
         print(response.json())

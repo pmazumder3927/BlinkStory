@@ -130,13 +130,13 @@ class RealTimeTranscriptionSink(Sink):
         # pick a random file and txt pair
         random_user = random.choice(list(self.audio_files.keys()))
         print(random_user)
-        random_file_idx = 0
+        random_file_idx = 1
         # make sure both wav and txt exist
         while not os.path.exists(f"recordings/{random_user}/{random_file_idx}.wav") or not os.path.exists(f"recordings/{random_user}/{random_file_idx}.txt"):
             random_file_idx = random.randint(1, len(os.listdir(f"recordings/{random_user}")) - 1)
         print(f"Using {random_user}/{random_file_idx}")
         response = response.replace("BlinkBot:", "")
-        audio_response = await synthesize_and_stream_audio(self.vc, response, [f"recordings/{random_user}/{random_file_idx}.wav"], [f"recordings/{random_user}/{random_file_idx}.txt"])
+        self.loop.create_task(synthesize_and_stream_audio(self.vc, response, [f"recordings/{random_user}/{random_file_idx}.wav"], [f"recordings/{random_user}/{random_file_idx}.txt"]))
         # wipe the running transcript chunks
         self.running_transcript_chunks = OrderedDict()
         self.interrim_chunk_ids = []
@@ -182,6 +182,8 @@ class RealTimeTranscriptionSink(Sink):
         print("Deepgram transcription setup complete.")
 
     async def transcribe_audio_deepgram(self):
+        if (self.dg_connection is None):
+            return
         print("Deepgram transcription started.")
         has_sent_silence = False
         to_send = b''
