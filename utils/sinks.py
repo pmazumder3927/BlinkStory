@@ -19,7 +19,7 @@ from utils.synthesis import synthesize_and_stream_audio
 from utils.transcript import BOOST_WORDS  # For in-memory byte streams
 
 class UserAudioFiles:
-    def __init__(self, user_id, n_channels, sample_rate, loop):
+    def __init__(self, user_id, n_channels, sample_rate, loop, model):
         self.sample_rate = sample_rate
         self.n_channels = n_channels
         # create a directory for the user if it doesn't exist
@@ -53,7 +53,6 @@ class UserAudioFiles:
         return b''  # If the entire data chunk is silence, return empty
 
     async def manage_files(self):
-        model = WhisperModel("large-v3", device="cuda", compute_type="float16")
         while True:
             await asyncio.sleep(1)
             if self.write_queue.qsize() > 0:
@@ -94,7 +93,7 @@ class RealTimeTranscriptionSink(Sink):
         self.transcription_task = None
         self.is_running = True
         self.dg_connection = None  # For Deepgram
-        self.model = None          # For faster-whisper
+        self.model = WhisperModel("large-v3", device="cuda", compute_type="float16")
         self.audio_files = {}
         self.running_transcript_chunks = OrderedDict()
         self.interrim_chunk_ids = []
@@ -109,7 +108,7 @@ class RealTimeTranscriptionSink(Sink):
 
     def setup_sink(self):
         for user in os.listdir("recordings"):
-            self.audio_files[user] = UserAudioFiles(user, self.n_channels, self.sample_rate, self.loop)
+            self.audio_files[user] = UserAudioFiles(user, self.n_channels, self.sample_rate, self.loop, self.model)
         if self.transcription_method == "deepgram":
             self.loop.create_task(self.setup_deepgram())
             self.transcription_task = self.loop.create_task(self.transcribe_audio_deepgram())
@@ -182,7 +181,7 @@ class RealTimeTranscriptionSink(Sink):
         print("Deepgram transcription setup complete.")
 
     async def transcribe_audio_deepgram(self):
-        if (self.dg_connection is None):
+        if (not self.dg_connection.is_connected()):
             return
         print("Deepgram transcription started.")
         has_sent_silence = False
@@ -326,7 +325,7 @@ class RealTimeTranscriptionSink(Sink):
 
         self.loop.call_soon_threadsafe(self.audio_queue.put_nowait, data)
         if user not in self.audio_files:
-            self.audio_files[user] = UserAudioFiles(user, self.n_channels, self.sample_rate, self.loop)
+            self.audio_files[user] = UserAudioFiles(user, self.n_channels, self.sample_rate, self.loop, self.model)
         self.audio_files[user].write(data)
 
     ### Cleanup Method ###
