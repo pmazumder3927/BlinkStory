@@ -22,6 +22,7 @@ class UserAudioFiles:
     def __init__(self, user_id, n_channels, sample_rate, loop, model):
         self.sample_rate = sample_rate
         self.n_channels = n_channels
+        self.model = model
         # create a directory for the user if it doesn't exist
         os.makedirs(f"recordings/{user_id}", exist_ok=True)
         self.user_id = user_id
@@ -64,7 +65,7 @@ class UserAudioFiles:
                 data = self.strip_leading_silence(data)
                 self.latest_file.writeframes(data)
             if self.latest_file.tell() >= self.sample_rate * 15:
-                segments, info = model.transcribe(self.from_index(self.latest_file_idx))
+                segments, info = self.model.transcribe(self.from_index(self.latest_file_idx))
                 # save transcript with clip
                 with open(f"./recordings/{self.user_id}/{self.latest_file_idx}.txt", "w") as f:
                     for segment in segments:
@@ -107,8 +108,6 @@ class RealTimeTranscriptionSink(Sink):
         self.setup_sink()
 
     def setup_sink(self):
-        for user in os.listdir("recordings"):
-            self.audio_files[user] = UserAudioFiles(user, self.n_channels, self.sample_rate, self.loop, self.model)
         if self.transcription_method == "deepgram":
             self.loop.create_task(self.setup_deepgram())
             self.transcription_task = self.loop.create_task(self.transcribe_audio_deepgram())
@@ -135,7 +134,7 @@ class RealTimeTranscriptionSink(Sink):
             random_file_idx = random.randint(1, len(os.listdir(f"recordings/{random_user}")) - 1)
         print(f"Using {random_user}/{random_file_idx}")
         response = response.replace("BlinkBot:", "")
-        self.loop.create_task(synthesize_and_stream_audio(self.vc, response, [f"recordings/{random_user}/{random_file_idx}.wav"], [f"recordings/{random_user}/{random_file_idx}.txt"]))
+        await synthesize_and_stream_audio(self.vc, response, [f"recordings/{random_user}/{random_file_idx}.wav"], [f"recordings/{random_user}/{random_file_idx}.txt"])
         # wipe the running transcript chunks
         self.running_transcript_chunks = OrderedDict()
         self.interrim_chunk_ids = []
