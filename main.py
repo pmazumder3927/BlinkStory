@@ -1,8 +1,10 @@
+import asyncio
 import discord
 from dotenv import load_dotenv
 from os import environ as env
 from manager import GenerationManager
-from utils.plot import generate_message_reply
+from utils.api_reqs import create_video_request_with_image, get_video_status, post_image
+from utils.plot import generate_image_prompt, generate_message_reply
 from utils.synthesis import synthesize_and_stream_audio
 from utils.sinks import RealTimeTranscriptionSink
 
@@ -12,6 +14,7 @@ class BotManager:
     def __init__(self):
         self.connections = {}
         self.generation_in_progress = False  # Track if generation is in progress bot-wide
+        self.image_queue = []
 
     async def once_done(self, sink: discord.sinks, channel: discord.TextChannel, *args):
         await sink.vc.disconnect()
@@ -39,6 +42,29 @@ class BotManager:
             await vc.disconnect()
         sink = RealTimeTranscriptionSink(transcription_method='deepgram')
         vc.start_recording(sink, when_done, ctx)
+
+    async def add_image_to_queue(self, message):
+        if len(self.image_queue) > 2:
+            await message.channel.send("loser")
+            return
+        # get the last 10 messages as context
+        messages = await message.channel.history(limit=10).flatten()
+        context = "\n".join([f"{m.author.display_name}: {m.content}" for m in messages[::-1]])
+        image_prompt = await generate_image_prompt(context)
+        print(image_prompt)
+        file_id = (await post_image(message.attachments[0].url, message.attachments[0].content_type))
+        video_id = await create_video_request_with_image(image_prompt, file_id)
+        asyncio.create_task(self.check_video_status(video_id, message))
+        self.image_queue.append(message)
+    
+    async def check_video_status(self, video_id, message):  
+        while True:
+            video_url = await get_video_status(video_id)
+            if video_url:
+                await message.channel.send(file=discord.File(video_url))
+                self.image_queue.remove(message)
+                break
+            await asyncio.sleep(10)
 
     async def record(self, ctx):
         # if generation is in progress, don't start another one
@@ -110,5 +136,10 @@ async def on_message(message):
         mirrored_message = await generate_message_reply(messages_string)
         if mirrored_message != "":
             await message.channel.send(mirrored_message)
+
+    # if has an image, add image to the queue
+    if message.attachments:
+        if message.attachments[0].filename.endswith(('.png', '.jpg', '.jpeg')):
+            await bot_manager.add_image_to_queue(message)
 
 bot.run(env.get("DISCORD_BOT_TOKEN"))
