@@ -76,7 +76,6 @@ async def create_video_request_with_image(context, file_id):
         "Authorization": f"Bearer {VIDEO_API_TOKEN}",
         "Content-Type": "application/json"
     }
-    print(context)
     body = {
         "prompt": context,
         "promptOptimization": True,

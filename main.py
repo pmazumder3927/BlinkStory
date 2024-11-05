@@ -1,7 +1,11 @@
 import asyncio
+import io
+import re
 import discord
 from dotenv import load_dotenv
 from os import environ as env
+
+import requests
 from manager import GenerationManager
 from utils.api_reqs import create_video_request_with_image, get_video_status, post_image
 from utils.plot import generate_image_prompt, generate_message_reply
@@ -43,25 +47,33 @@ class BotManager:
         sink = RealTimeTranscriptionSink(transcription_method='deepgram')
         vc.start_recording(sink, when_done, ctx)
 
-    async def add_image_to_queue(self, message):
+    async def add_image_to_queue(self, original_message, prompt_message):
         if len(self.image_queue) > 2:
-            await message.channel.send("loser")
+            await prompt_message.channel.send("im busy loser")
             return
         # get the last 10 messages as context
-        messages = await message.channel.history(limit=10).flatten()
-        context = "\n".join([f"{m.author.display_name}: {m.content}" for m in messages[::-1]])
-        image_prompt = await generate_image_prompt(context)
-        print(image_prompt)
-        file_id = (await post_image(message.attachments[0].url, message.attachments[0].content_type))
+        # messages = await message.channel.history(limit=10).flatten()
+        # context = "\n".join([f"{m.author.display_name}: {m.content}" for m in messages[::-1]])
+        # image_prompt = await generate_image_prompt(context)
+        progress_message = await prompt_message.channel.send("ok")
+        image_prompt = prompt_message.content
+        image_prompt = re.sub(r'<@.*?>', '', image_prompt)
+        file_id = (await post_image(original_message.attachments[0].url, original_message.attachments[0].content_type))
         video_id = await create_video_request_with_image(image_prompt, file_id)
-        asyncio.create_task(self.check_video_status(video_id, message))
-        self.image_queue.append(message)
+        await progress_message.delete()
+        self.image_queue.append(prompt_message)
+        asyncio.create_task(self.check_video_status(video_id, prompt_message))
     
     async def check_video_status(self, video_id, message):  
         while True:
             video_url = await get_video_status(video_id)
             if video_url:
-                await message.channel.send(file=discord.File(video_url))
+                # download the video
+                video_response = requests.get(video_url)
+                video_content = io.BytesIO(video_response.content)
+                video_content.seek(0)
+                video_file = discord.File(video_content, filename=f"{video_id}.mp4")
+                await message.channel.send(file=video_file, reference=message)
                 self.image_queue.remove(message)
                 break
             await asyncio.sleep(10)
@@ -137,9 +149,12 @@ async def on_message(message):
         if mirrored_message != "":
             await message.channel.send(mirrored_message)
 
-    # if has an image, add image to the queue
-    if message.attachments:
-        if message.attachments[0].filename.endswith(('.png', '.jpg', '.jpeg')):
-            await bot_manager.add_image_to_queue(message)
+    # if mentioned
+    if bot.user.mentioned_in(message):
+        # if the message mentioned by the message has an image, add image to the queue
+        if message.reference and message.reference.resolved:
+            if message.reference.resolved.attachments:
+                if message.reference.resolved.attachments[0].filename.endswith(('.png', '.jpg', '.jpeg')):
+                    await bot_manager.add_image_to_queue(message.reference.resolved, message)
 
 bot.run(env.get("DISCORD_BOT_TOKEN"))

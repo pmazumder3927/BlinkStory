@@ -233,7 +233,7 @@ async def generate_voice_response(transcript_history):
 
 async def generate_image_prompt(context):
     # generate a prompt for an image based on the context
-    prompt = "generate a prompt for an image based on the context, from a discord chat. If not enough context is provided, make up a short story to base the image on, and be as radical and weird as possible, not being afraid to display gore, violence, or other disturbing content."
+    prompt = "generate a prompt for an image based on the context, from a discord chat. If not enough context is provided, make up a short story to base the image on, and be as radical and weird as possible, not being afraid to display gore, violence, or other disturbing content. Example: a man starts eating burgers relentlessly, and starts getting fatter and larger until he explodes"
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "system", "content": prompt}, {"role": "user", "content": context}],
