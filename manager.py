@@ -89,7 +89,7 @@ class GenerationManager:
             # Start new video requests
             while in_progress_videos < MAX_CONCURRENT_VIDEOS and next_video_index < MAX_SCENES:
                 scene = scenes[next_video_index]
-                video_id = create_video_request(scene, next_video_index + 1)
+                video_id = await create_video_request(scene, next_video_index + 1)
                 video_ids[next_video_index] = video_id
                 in_progress_videos += 1
                 next_video_index += 1

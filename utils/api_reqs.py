@@ -66,7 +66,6 @@ async def create_video_request(scene_prompt, scene_number):
     body = {
         "prompt": scene_prompt,
         "promptOptimization": True,
-        "replyRef": f"Scene_{scene_number}",
         "maxJobs": 5
     }
     return create_request(VIDEO_API_URL, headers, body=body).get("videoId")
