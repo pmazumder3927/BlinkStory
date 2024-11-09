@@ -115,4 +115,5 @@ class GenerationManager:
             await update_progress_message(initial_message, remaining_time, custom_messages=progress_messages)
             await asyncio.sleep(30)
 
+        video_urls = [url for url in video_urls if url is not ""]
         return video_urls, song_url
