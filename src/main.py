@@ -6,13 +6,14 @@ from dotenv import load_dotenv
 from os import environ as env
 
 import requests
-from manager import GenerationManager
-from utils.api_reqs import create_video_request_with_image, get_video_status, post_image
-from utils.plot import generate_image_prompt, generate_message_reply
-from utils.synthesis import synthesize_and_stream_audio
-from utils.sinks import RealTimeTranscriptionSink
+from src.manager import GenerationManager
+from src.utils.api_reqs import create_video_request_with_image, get_video_status, post_image
+from src.utils.plot import generate_image_prompt, generate_message_reply
+from src.utils.synthesis import synthesize_and_stream_audio
+from src.utils.sinks import RealTimeTranscriptionSink
+from config.constants import DISCORD_CHANNEL_ID
 
-CHANNEL_ID = 1298169696356536371
+CHANNEL_ID = DISCORD_CHANNEL_ID
 
 class BotManager:
     def __init__(self):
@@ -157,4 +158,10 @@ async def on_message(message):
                 if message.reference.resolved.attachments[0].filename.endswith(('.png', '.jpg', '.jpeg')):
                     await bot_manager.add_image_to_queue(message.reference.resolved, message)
 
-bot.run(env.get("DISCORD_BOT_TOKEN"))
+def main():
+    """Main entry point for the Discord bot."""
+    load_dotenv()
+    bot.run(env.get("DISCORD_BOT_TOKEN"))
+
+if __name__ == "__main__":
+    main()

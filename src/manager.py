@@ -1,27 +1,22 @@
 import asyncio
 import time
 import discord
-from utils.api_reqs import check_song_status, check_video_status, create_song_request, create_video_request
-from utils.funny import update_progress_message
-from utils.plot import PlotManager
-from utils.transcript import replace_usernames, transcribe_audio
-from utils.video_utils import compress_video, merge_videos_and_song
-from deepgram import DeepgramClient, PrerecordedOptions
 import os
+from deepgram import DeepgramClient, PrerecordedOptions
 
-from utils.youtube import YouTubeUploader
-from utils.transcript import BOOST_WORDS
-MAX_SCENES = 12
-MAX_CONCURRENT_VIDEOS = 3
+from src.utils.api_reqs import check_song_status, check_video_status, create_song_request, create_video_request
+from src.utils.funny import update_progress_message
+from src.utils.plot import PlotManager
+from src.utils.transcript import replace_usernames, transcribe_audio, BOOST_WORDS
+from src.utils.video_utils import compress_video, merge_videos_and_song
+from src.utils.youtube import YouTubeUploader
+from config.constants import MAX_SCENES, MAX_CONCURRENT_VIDEOS, DEEPGRAM_MODEL, DEEPGRAM_OPTIONS, COMPRESSED_OUTPUT_PATH, CLIENT_SECRET_FILE, VIDEO_COMPRESSION_QUALITY
+
 deepgram = DeepgramClient(os.getenv("DEEPGRAM_API_TOKEN"))
 options = PrerecordedOptions(
-    model="nova-2",
-    smart_format=True,
-    utterances=True,
-    punctuate=True,
-    diarize=True,
-    detect_language=True,
-    keywords=BOOST_WORDS
+    model=DEEPGRAM_MODEL,
+    keywords=BOOST_WORDS,
+    **DEEPGRAM_OPTIONS
 )
 
 class GenerationManager:
@@ -63,14 +58,13 @@ class GenerationManager:
         # step 4: merge videos and send final output
         output_path = await merge_videos_and_song(song_url, lyrics, video_urls, subtitle_properties)
         # create compressed version to send
-        compressed_path = "./compressed_output.mp4"
-        compress_video(output_path, compressed_path, 50)
-        await self.channel.send(file=discord.File(compressed_path))
+        compress_video(output_path, COMPRESSED_OUTPUT_PATH, VIDEO_COMPRESSION_QUALITY)
+        await self.channel.send(file=discord.File(COMPRESSED_OUTPUT_PATH))
 
         # upload full resolution version to youtube
         youtube_data = await self.plot_manager.generate_youtube_data()
         print("Youtube Data:", youtube_data)
-        youtube_uploader = YouTubeUploader(client_secret_file="client_secret.json")
+        youtube_uploader = YouTubeUploader(client_secret_file=CLIENT_SECRET_FILE)
         link = youtube_uploader.upload_video(output_path, youtube_data=youtube_data)
         await self.channel.send(link)
 

@@ -1,11 +1,10 @@
 import requests
 import json
 import os
+from config.constants import VIDEO_API_URL, SONG_API_URL
 
-VIDEO_API_URL = "https://api.useapi.net/v1/minimax/videos/create"
 VIDEO_API_TOKEN = os.getenv("VIDEO_API_TOKEN")
 VIDEO_API_ACCOUNT = os.getenv("VIDEO_API_ACCOUNT")
-SONG_API_URL = "https://api.goapi.ai/api/suno/v1/music"
 SONG_API_TOKEN = os.getenv("GHETTO_API_TOKEN")
 
 async def check_song_status(song_task_id, song_url=None):
